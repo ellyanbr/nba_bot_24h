@@ -57,7 +57,7 @@
   .order.warn{border-color:var(--warn)} .order.warn .head{background:var(--warn-bg)}
   .order.late{border-color:var(--late);animation:pulse 1s ease-in-out infinite} .order.late .head{background:var(--late-bg)}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(229,56,59,.7)}50%{box-shadow:0 0 0 10px rgba(229,56,59,0)}}
-  .order .id{font-size:1.4rem;font-weight:900}
+  .order .id{font-size:1.4rem;font-weight:900;white-space:nowrap}
   .order .meta{font-size:.8rem;color:var(--muted)}
   .timer{font-size:2rem;font-weight:900;font-variant-numeric:tabular-nums}
   .order.ok .timer{color:var(--ok)} .order.warn .timer{color:var(--warn)} .order.late .timer{color:var(--late)}
@@ -88,12 +88,29 @@
   .pill{padding:3px 10px;border-radius:999px;font-weight:700;font-size:.8rem}
   .pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.late{background:var(--late-bg);color:var(--late)}
   .two{display:grid;grid-template-columns:1fr 2fr;gap:14px}
-  .bars .row{display:grid;grid-template-columns:80px 1fr 70px;gap:10px;align-items:center;margin:10px 0}
+  .bars .row{display:grid;grid-template-columns:80px 1fr 100px;gap:10px;align-items:center;margin:10px 0}
   .bars .track{background:var(--panel2);height:14px;border-radius:999px;overflow:hidden}
   .bars .fill{height:100%;background:var(--accent)}
   .settings{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-top:18px}
   .settings > div{width:160px}
   .table-wrap{overflow-x:auto}
+  .origin{font-size:.7rem;font-weight:800;padding:2px 8px;border-radius:999px;background:#ffffff1a;margin-left:6px;vertical-align:3px}
+  .loadbar{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;font-size:.9rem}
+  .loadbar span{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+  .loadbar b{font-variant-numeric:tabular-nums}
+  /* Modo compacto: mais pedidos por tela em horário de pico */
+  body.compact .board{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+  body.compact .order .head{padding:6px 10px}
+  body.compact .order .id{font-size:1.1rem}
+  body.compact .timer{font-size:1.4rem}
+  body.compact .items{padding:4px;gap:4px}
+  body.compact .item{min-height:44px;padding:6px}
+  body.compact .item .qty{font-size:1rem;min-width:28px}
+  body.compact .item .name{font-size:.92rem}
+  body.compact .item .tag{display:none}
+  body.compact .item .chk{padding:6px 8px;font-size:.7rem}
+  body.compact .bump{padding:12px;font-size:.95rem}
+  body.compact .order .foot{padding:4px}
 
   @media (max-width:760px){
     .form-grid,.two{grid-template-columns:1fr}
@@ -123,11 +140,19 @@
         <div class="seg" id="typeSeg">
           <button data-type="Mesa" class="on">Mesa</button>
           <button data-type="Delivery">Delivery</button>
-          <button data-type="Balcão">Balcão</button>
+          <button data-type="Retirada">Retirada</button>
         </div>
         <div style="margin-top:14px">
-          <label for="ident">Nº da mesa / identificação</label>
-          <input id="ident" placeholder="Ex.: 12  ou  iFood #4521" autocomplete="off">
+          <label for="ident">Nº da mesa / nº do pedido / nome do cliente</label>
+          <input id="ident" placeholder="Ex.: 12  ou  Site #4521  ou  João" autocomplete="off">
+        </div>
+        <div style="margin-top:14px">
+          <label>Origem</label>
+          <div class="seg" id="originSeg">
+            <button data-o="Garçom" class="on">Garçom</button>
+            <button data-o="Site">Site</button>
+            <button data-o="Caixa">Caixa</button>
+          </div>
         </div>
       </div>
       <div class="card-box">
@@ -173,7 +198,12 @@
         <span><i class="dot" style="background:var(--late)"></i><span id="lgLate"></span></span>
         <span id="counts"></span>
       </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-ghost" id="undoBtn" title="Devolve à tela o último pedido expedido">↶ Desfazer expedição</button>
+        <button class="btn-ghost" id="compactBtn">Modo compacto</button>
+      </div>
     </div>
+    <div class="loadbar" id="loadbar"></div>
     <div class="board" id="board"></div>
   </section>
 
@@ -187,8 +217,10 @@
     </div>
     <div class="two">
       <div class="card-box">
-        <div class="lbl" style="color:var(--muted);margin-bottom:6px">TMT por praça</div>
+        <div class="lbl" style="color:var(--muted);margin-bottom:6px">TMT por canal</div>
         <div class="bars" id="bars"></div>
+        <div class="lbl" style="color:var(--muted);margin:18px 0 6px">Pedidos por hora (expedidos)</div>
+        <div class="bars" id="hours"></div>
       </div>
       <div class="card-box">
         <div style="color:var(--muted);margin-bottom:6px">Últimos pedidos expedidos</div>
@@ -199,8 +231,13 @@
       </div>
     </div>
     <div class="card-box settings">
-      <div><label for="cfgWarn">Amarelo a partir de (min)</label><input type="number" id="cfgWarn" min="1"></div>
-      <div><label for="cfgLate">Vermelho a partir de (min)</label><input type="number" id="cfgLate" min="2"></div>
+      <div style="width:100%;color:var(--muted)">Metas de tempo por canal (minutos): amarelo a partir de / vermelho a partir de</div>
+      <div><label>Mesa — amarelo</label><input type="number" min="1" data-th="Mesa.warn"></div>
+      <div><label>Mesa — vermelho</label><input type="number" min="2" data-th="Mesa.late"></div>
+      <div><label>Delivery — amarelo</label><input type="number" min="1" data-th="Delivery.warn"></div>
+      <div><label>Delivery — vermelho</label><input type="number" min="2" data-th="Delivery.late"></div>
+      <div><label>Retirada — amarelo</label><input type="number" min="1" data-th="Retirada.warn"></div>
+      <div><label>Retirada — vermelho</label><input type="number" min="2" data-th="Retirada.late"></div>
       <div><label for="cfgSound">Alerta sonoro</label>
         <select id="cfgSound"><option value="1">Ligado</option><option value="0">Desligado</option></select></div>
       <button class="btn-ghost" id="saveCfg">Salvar</button>
@@ -214,7 +251,7 @@
 <script>
 (() => {
   // ================= Estado e persistência =================
-  const KEY = 'kds_proto_v1';
+  const KEY = 'kds_proto_v2';
   const MIN = 60 * 1000;
   const STATIONS = ['Cozinha', 'Chapa', 'Bar'];
   const QUICK = [
@@ -232,30 +269,39 @@
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
 
+  function DEFAULT_CFG() { return { sound: 1, th: { Mesa: { warn: 20, late: 30 }, Delivery: { warn: 20, late: 30 }, Retirada: { warn: 15, late: 25 } } }; }
+
+  // Simula uma noite de pico: ~20 pedidos abertos e ~70 já expedidos no dia
   function seedDemo() {
     const now = Date.now();
-    const mk = (ident, type, agoMin, items, obs = '') => ({
-      id: Math.random().toString(36).slice(2), seq: 0, ident, type, obs, createdAt: now - agoMin * MIN,
-      items: items.map(([qty, name, station, iobs = '', done = false]) => ({ id: Math.random().toString(36).slice(2), qty, name, station, obs: iobs, doneAt: done ? now - 60000 : null }))
+    let r = 7; const rnd = () => (r = (r * 9301 + 49297) % 233280) / 233280; // pseudo-aleatório determinístico
+    const MENU = [['Filé à parmegiana','Cozinha'],['Risoto de cogumelos','Cozinha'],['Salada Caesar','Cozinha'],['Strogonoff','Cozinha'],
+      ['X-Burger','Chapa'],['Picanha na chapa','Chapa'],['Batata frita','Chapa'],['Frango grelhado','Chapa'],
+      ['Caipirinha','Bar'],['Chopp','Bar'],['Suco de laranja','Bar'],['Refrigerante','Bar']];
+    const OBS = ['', '', '', 'sem cebola', 'ao ponto', 'bem passada', 'molho à parte', 'sem gelo', 'arroz extra', 'sem queijo'];
+    const pick = a => a[Math.floor(rnd() * a.length)];
+    const mkItems = (n, ago) => Array.from({ length: n }, () => {
+      const [name, station] = pick(MENU);
+      const done = ago > 8 && rnd() < Math.min(.85, ago / 40);
+      return { id: Math.random().toString(36).slice(2), qty: 1 + Math.floor(rnd() * 3), name, station, obs: pick(OBS), doneAt: done ? now - 60000 : null };
     });
-    const orders = [
-      mk('22', 'Mesa', 21.5, [[2,'Picanha na chapa','Chapa','1 ao ponto, 1 bem passada'],[1,'Batata frita','Chapa','',true],[2,'Chopp','Bar','',true]]),
-      mk('iFood #4521', 'Delivery', 16.2, [[1,'Risoto de cogumelos','Cozinha','sem queijo'],[1,'Salada Caesar','Cozinha','molho à parte']], 'Motoboy aguardando'),
-      mk('07', 'Mesa', 13.4, [[1,'Filé à parmegiana','Cozinha'],[1,'X-Burger','Chapa','sem cebola'],[1,'Suco de laranja','Bar','sem açúcar',true]]),
-      mk('15', 'Mesa', 10.8, [[3,'Caipirinha','Bar','1 de vodka'],[1,'Batata frita','Chapa','bem crocante']]),
-      mk('Balcão 3', 'Balcão', 6, [[2,'X-Burger','Chapa','1 sem picles']]),
-      mk('04', 'Mesa', 2.5, [[1,'Salada Caesar','Cozinha'],[2,'Chopp','Bar']]),
-      mk('Rappi #889', 'Delivery', 0.4, [[1,'Filé à parmegiana','Cozinha','arroz extra'],[1,'Batata frita','Chapa']])
-    ];
-    orders.forEach((o, i) => o.seq = i + 1);
-    // histórico fictício do dia para o dashboard já ter números
+    const ages = [36, 33, 31, 28, 26.5, 24, 22, 21, 19, 17, 15.5, 13, 11, 9.5, 8, 6, 4.5, 3, 1.5, 0.3];
+    const orders = ages.map((ago, i) => {
+      const t = rnd(); const type = t < .55 ? 'Mesa' : t < .85 ? 'Delivery' : 'Retirada';
+      const origin = type === 'Mesa' ? 'Garçom' : rnd() < .8 ? 'Site' : 'Caixa';
+      const ident = type === 'Mesa' ? String(1 + Math.floor(rnd() * 38)).padStart(2, '0') : type === 'Delivery' ? 'Site #' + (4500 + i) : pick(['João', 'Maria', 'Carla', 'Pedro', 'Ana']);
+      return { id: Math.random().toString(36).slice(2), seq: i + 1, ident, type, origin, obs: type === 'Delivery' && rnd() < .3 ? 'Motoboy aguardando' : '',
+        createdAt: now - ago * MIN, items: mkItems(1 + Math.floor(rnd() * 4), ago) };
+    });
     const history = [];
-    const samples = [[8.2,'Cozinha'],[12.5,'Chapa'],[6.1,'Bar'],[17.8,'Cozinha'],[9.4,'Chapa'],[11.2,'Cozinha'],[4.3,'Bar'],[14.6,'Chapa'],[19.9,'Cozinha'],[7.7,'Chapa'],[3.9,'Bar'],[10.1,'Cozinha']];
-    samples.forEach(([m, st], i) => {
-      const done = now - (180 - i * 12) * MIN;
-      history.push({ id: 'h' + i, ident: String(10 + i), type: 'Mesa', createdAt: done - m * MIN, doneAt: done, itemCount: 1 + (i % 3), stations: [st] });
-    });
-    return { orders, history, seq: orders.length, cfg: { warn: 10, late: 15, sound: 1 } };
+    for (let i = 0; i < 70; i++) {
+      const done = now - (300 - i * 4) * MIN;
+      const hour = new Date(done).getHours();
+      const t = rnd(); const type = t < .55 ? 'Mesa' : t < .85 ? 'Delivery' : 'Retirada';
+      const m = 14 + rnd() * 14 + (i > 40 ? rnd() * 12 : 0); // tempos sobem no pico
+      history.push({ id: 'h' + i, ident: String(i + 1), type, origin: 'Garçom', createdAt: done - m * MIN, doneAt: done, itemCount: 1 + (i % 4), stations: [pick(MENU)[1]] });
+    }
+    return { orders, history, seq: orders.length, cfg: DEFAULT_CFG() };
   }
 
   // ================= Utilitários =================
@@ -263,7 +309,8 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const fmt = ms => { const t = Math.max(0, Math.floor(ms / 1000)); const m = Math.floor(t / 60), s = t % 60; return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; };
   const hhmm = ts => new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const level = ms => ms >= state.cfg.late * MIN ? 'late' : ms >= state.cfg.warn * MIN ? 'warn' : 'ok';
+  const th = type => state.cfg.th[type] || state.cfg.th.Mesa;
+  const level = (ms, type) => ms >= th(type).late * MIN ? 'late' : ms >= th(type).warn * MIN ? 'warn' : 'ok';
   function toast(msg, color) { const t = $('#toast'); t.textContent = msg; t.style.background = color || 'var(--ok)'; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2200); }
 
   // Alerta sonoro curto quando um pedido fica vermelho
@@ -280,7 +327,7 @@
       });
     } catch {}
   }
-  const alerted = new Set(state.orders.filter(o => level(Date.now() - o.createdAt) === 'late').map(o => o.id));
+  const alerted = new Set(state.orders.filter(o => level(Date.now() - o.createdAt, o.type) === 'late').map(o => o.id));
 
   // ================= Navegação =================
   document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
@@ -296,7 +343,8 @@
   }
 
   // ================= Lançamento =================
-  let posType = 'Mesa', posStation = 'Cozinha', kdsFilter = 'Todas';
+  let posType = 'Mesa', posStation = 'Cozinha', posOrigin = 'Garçom', kdsFilter = 'Todas';
+  segment('#originSeg', b => posOrigin = b.dataset.o);
   segment('#typeSeg', b => posType = b.dataset.type);
   segment('#stationSeg', b => posStation = b.dataset.st);
   segment('#kdsFilter', b => { kdsFilter = b.dataset.f; renderBoard(true); });
@@ -334,7 +382,7 @@
     if (!ident) { toast('Informe a mesa ou identificação', 'var(--late)'); $('#ident').focus(); return; }
     if (!items.length) { toast('Adicione ao menos um item', 'var(--late)'); return; }
     state.seq++;
-    state.orders.push({ id: nid(), seq: state.seq, ident, type: posType, obs: $('#orderObs').value.trim(), createdAt: Date.now(), items });
+    state.orders.push({ id: nid(), seq: state.seq, ident, type: posType, origin: posOrigin, obs: $('#orderObs').value.trim(), createdAt: Date.now(), items });
     save();
     $('#ident').value = ''; $('#orderObs').value = ''; $('#itemRows').innerHTML = ''; addRow();
     renderBoard(true);
@@ -351,14 +399,14 @@
     board.innerHTML = list.map(o => {
       const its = visibleItems(o);
       const allDone = o.items.every(i => i.doneAt);
-      const lvl = level(Date.now() - o.createdAt);
+      const lvl = level(Date.now() - o.createdAt, o.type);
       return `<article class="order ${lvl}" data-id="${o.id}">
         <div class="head">
           <div>
-            <div class="id">${o.type === 'Mesa' ? 'Mesa ' : ''}${esc(o.ident)}<span class="seq">#${o.seq}</span></div>
+            <div class="id">${o.type === 'Mesa' ? 'Mesa ' : ''}${esc(o.ident)}<span class="seq">#${o.seq}</span>${o.origin ? `<span class="origin">${esc(o.origin)}</span>` : ''}</div>
             <div class="meta">${esc(o.type)} · entrou ${hhmm(o.createdAt)}</div>
           </div>
-          <div class="timer" data-t="${o.createdAt}">${fmt(Date.now() - o.createdAt)}</div>
+          <div class="timer" data-t="${o.createdAt}" data-type="${esc(o.type)}">${fmt(Date.now() - o.createdAt)}</div>
         </div>
         ${o.obs ? `<div style="padding:8px 14px 0;color:#ffb4a2;font-weight:700">⚠ ${esc(o.obs)}</div>` : ''}
         <div class="items">
@@ -388,7 +436,8 @@
       const pending = o.items.filter(i => !i.doneAt).length;
       if (pending && !confirm(`Ainda há ${pending} item(ns) não marcados como pronto. Expedir mesmo assim?`)) return;
       const now = Date.now();
-      state.history.push({ id: o.id, ident: o.ident, type: o.type, createdAt: o.createdAt, doneAt: now, itemCount: o.items.length,
+      lastBumped.push(o);
+      state.history.push({ id: o.id, ident: o.ident, type: o.type, origin: o.origin, createdAt: o.createdAt, doneAt: now, itemCount: o.items.length,
         stations: [...new Set(o.items.map(i => i.station))] });
       state.orders = state.orders.filter(x => x !== o);
       save(); renderBoard();
@@ -398,11 +447,16 @@
 
   function updateCounts() {
     const now = Date.now(); const c = { ok: 0, warn: 0, late: 0 };
-    state.orders.forEach(o => c[level(now - o.createdAt)]++);
+    state.orders.forEach(o => c[level(now - o.createdAt, o.type)]++);
     $('#counts').textContent = `Em produção: ${state.orders.length} · atrasados: ${c.late}`;
-    $('#lgOk').textContent = `0–${state.cfg.warn} min`;
-    $('#lgWarn').textContent = `${state.cfg.warn}–${state.cfg.late} min`;
-    $('#lgLate').textContent = `> ${state.cfg.late} min`;
+    $('#lgOk').textContent = 'no prazo';
+    $('#lgWarn').textContent = 'atenção';
+    $('#lgLate').textContent = 'atrasado';
+    const byType = ['Mesa', 'Delivery', 'Retirada'].map(t => [t, state.orders.filter(o => o.type === t)]);
+    const oldest = state.orders.reduce((m, o) => Math.min(m, o.createdAt), now);
+    $('#loadbar').innerHTML = byType.map(([t, l]) => `<span>${t}: <b>${l.length}</b> <span style="border:0;padding:0;color:var(--muted)">(meta ${th(t).late} min)</span></span>`).join('') +
+      `<span>Itens pendentes: <b>${state.orders.reduce((n, o) => n + o.items.filter(i => !i.doneAt).length, 0)}</b></span>` +
+      (state.orders.length ? `<span>Mais antigo: <b>${fmt(now - oldest)}</b></span>` : '');
   }
 
   // Atualização a cada segundo: só mexe no texto e na classe de cor (sem re-render pesado)
@@ -412,7 +466,7 @@
     document.querySelectorAll('.order').forEach(card => {
       const t = card.querySelector('.timer'); const el = now - +t.dataset.t;
       t.textContent = fmt(el);
-      const lvl = level(el);
+      const lvl = level(el, t.dataset.type);
       if (!card.classList.contains(lvl)) { card.classList.remove('ok', 'warn', 'late'); card.classList.add(lvl); }
       if (lvl === 'late' && !alerted.has(card.dataset.id)) { alerted.add(card.dataset.id); beep(); }
     });
@@ -425,42 +479,70 @@
     const today = state.history.filter(h => h.doneAt >= startOfDay());
     const durs = today.map(h => h.doneAt - h.createdAt);
     const avg = durs.length ? durs.reduce((a, b) => a + b, 0) / durs.length : 0;
-    const onTime = durs.filter(d => d < state.cfg.late * MIN).length;
+    const onTime = today.filter(h => h.doneAt - h.createdAt < th(h.type).late * MIN).length;
     $('#kTmt').textContent = durs.length ? fmt(avg) : '--';
     $('#kDone').textContent = today.length;
     $('#kOpen').textContent = `${state.orders.length} em produção agora`;
     $('#kOnTime').textContent = durs.length ? Math.round(onTime / durs.length * 100) + '%' : '--';
     $('#kOnTime').style.color = !durs.length ? '' : onTime / durs.length >= .85 ? 'var(--ok)' : onTime / durs.length >= .7 ? 'var(--warn)' : 'var(--late)';
-    $('#kOnTimeSub').textContent = `${onTime} de ${durs.length} abaixo de ${state.cfg.late} min`;
+    $('#kOnTimeSub').textContent = `${onTime} de ${durs.length} dentro da meta do canal`;
     const maxI = durs.indexOf(Math.max(...durs));
     $('#kMax').textContent = durs.length ? fmt(durs[maxI]) : '--';
     $('#kMaxSub').textContent = durs.length ? `${today[maxI].type} ${today[maxI].ident} às ${hhmm(today[maxI].doneAt)}` : '';
 
-    const per = STATIONS.map(st => {
-      const d = today.filter(h => h.stations.includes(st)).map(h => h.doneAt - h.createdAt);
-      return [st, d.length ? d.reduce((a, b) => a + b, 0) / d.length : 0, d.length];
+    const per = ['Mesa', 'Delivery', 'Retirada'].map(t => {
+      const d = today.filter(h => h.type === t).map(h => h.doneAt - h.createdAt);
+      return [t, d.length ? d.reduce((a, b) => a + b, 0) / d.length : 0, d.length];
     });
-    const top = Math.max(state.cfg.late * MIN, ...per.map(p => p[1]));
-    $('#bars').innerHTML = per.map(([st, v, n]) => `<div class="row"><div>${st}</div>
-      <div class="track"><div class="fill" style="width:${(v / top * 100).toFixed(1)}%;background:var(--${level(v)})"></div></div>
-      <div style="text-align:right">${n ? fmt(v) : '--'}</div></div>`).join('') +
-      `<div class="meta" style="color:var(--muted);font-size:.8rem">Pedidos com itens em mais de uma praça contam em cada uma.</div>`;
+    const top = Math.max(...per.map(p => Math.max(p[1], th(p[0]).late * MIN)));
+    $('#bars').innerHTML = per.map(([t, v, n]) => `<div class="row"><div>${t}</div>
+      <div class="track"><div class="fill" style="width:${(v / top * 100).toFixed(1)}%;background:var(--${level(v, t)})"></div></div>
+      <div style="text-align:right">${n ? fmt(v) : '--'}</div></div>`).join('');
+    const hours = {};
+    today.forEach(h => { const k = new Date(h.doneAt).getHours(); (hours[k] = hours[k] || []).push(h.doneAt - h.createdAt); });
+    const hk = Object.keys(hours).map(Number).sort((a, b) => a - b);
+    const hmax = Math.max(1, ...hk.map(k => hours[k].length));
+    $('#hours').innerHTML = hk.map(k => { const d = hours[k], avg = d.reduce((a, b) => a + b, 0) / d.length;
+      return `<div class="row"><div>${String(k).padStart(2, '0')}h</div>
+      <div class="track"><div class="fill" style="width:${(d.length / hmax * 100).toFixed(1)}%"></div></div>
+      <div style="text-align:right">${d.length} · ${fmt(avg)}</div></div>`; }).join('') ||
+      '<div style="color:var(--muted)">Sem dados ainda.</div>';
 
     $('#hist').innerHTML = today.slice().sort((a, b) => b.doneAt - a.doneAt).slice(0, 15).map(h => {
       const d = h.doneAt - h.createdAt;
-      return `<tr><td>${esc(h.type)} ${esc(h.ident)}</td><td>${hhmm(h.createdAt)}</td><td>${hhmm(h.doneAt)}</td><td>${h.itemCount}</td><td><span class="pill ${level(d)}">${fmt(d)}</span></td></tr>`;
+      return `<tr><td>${esc(h.type)} ${esc(h.ident)}</td><td>${hhmm(h.createdAt)}</td><td>${hhmm(h.doneAt)}</td><td>${h.itemCount}</td><td><span class="pill ${level(d, h.type)}">${fmt(d)}</span></td></tr>`;
     }).join('') || '<tr><td colspan="5" style="color:var(--muted)">Nenhum pedido expedido hoje.</td></tr>';
   }
 
   // ================= Configurações =================
-  function fillCfg() { $('#cfgWarn').value = state.cfg.warn; $('#cfgLate').value = state.cfg.late; $('#cfgSound').value = state.cfg.sound; }
+  function fillCfg() {
+    document.querySelectorAll('[data-th]').forEach(i => { const [t, k] = i.dataset.th.split('.'); i.value = th(t)[k]; });
+    $('#cfgSound').value = state.cfg.sound;
+  }
   $('#saveCfg').onclick = () => {
-    const w = +$('#cfgWarn').value, l = +$('#cfgLate').value;
-    if (!(w > 0 && l > w)) { toast('O vermelho precisa ser maior que o amarelo', 'var(--late)'); return; }
-    state.cfg = { warn: w, late: l, sound: +$('#cfgSound').value }; save(); renderBoard(); renderDash(); toast('Configurações salvas');
+    const next = { sound: +$('#cfgSound').value, th: {} };
+    document.querySelectorAll('[data-th]').forEach(i => { const [t, k] = i.dataset.th.split('.'); (next.th[t] = next.th[t] || {})[k] = +i.value; });
+    const bad = Object.entries(next.th).find(([, v]) => !(v.warn > 0 && v.late > v.warn));
+    if (bad) { toast(`${bad[0]}: o vermelho precisa ser maior que o amarelo`, 'var(--late)'); return; }
+    state.cfg = next; save(); renderBoard(); renderDash(); toast('Configurações salvas');
   };
-  $('#resetDemo').onclick = () => { if (confirm('Substituir tudo pelos pedidos de demonstração?')) { const cfg = state.cfg; state = seedDemo(); state.cfg = cfg; alerted.clear(); save(); renderBoard(); renderDash(); toast('Demonstração recarregada'); } };
+  $('#resetDemo').onclick = () => { if (confirm('Substituir tudo pelos pedidos de demonstração?')) { const cfg = state.cfg; state = seedDemo(); state.cfg = cfg; lastBumped.length = 0; alerted.clear(); save(); renderBoard(); renderDash(); toast('Demonstração recarregada'); } };
   $('#clearAll').onclick = () => { if (confirm('Apagar todos os pedidos e o histórico?')) { state.orders = []; state.history = []; state.seq = 0; save(); renderBoard(); renderDash(); } };
+
+  const lastBumped = [];
+  $('#undoBtn').onclick = () => {
+    const o = lastBumped.pop();
+    if (!o) { toast('Nada para desfazer', 'var(--warn)'); return; }
+    state.history = state.history.filter(h => h.id !== o.id);
+    state.orders.push(o); save(); renderBoard(); toast(`${o.type} ${o.ident} voltou para a tela`, 'var(--accent)');
+  };
+  function setCompact(on) {
+    document.body.classList.toggle('compact', on);
+    $('#compactBtn').textContent = on ? 'Modo normal' : 'Modo compacto';
+    try { localStorage.setItem(KEY + '_compact', on ? '1' : ''); } catch {}
+  }
+  $('#compactBtn').onclick = () => setCompact(!document.body.classList.contains('compact'));
+  try { setCompact(!!localStorage.getItem(KEY + '_compact')); } catch {}
 
   // Sincroniza entre abas (ex.: lançamento em uma aba, KDS em outra)
   window.addEventListener('storage', e => { if (e.key === KEY) { const s = load(); if (s) { state = s; renderBoard(); renderDash(); fillCfg(); } } });
