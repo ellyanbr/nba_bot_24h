@@ -392,7 +392,7 @@
   function renderBoard() {
     // filtro por praça só aparece se houver mais de uma praça em uso
     const used = new Set(state.orders.flatMap(o => o.items.map(i => i.station)));
-    $('#kdsFilter').style.visibility = used.size > 1 ? 'visible' : 'hidden';
+    $('#kdsFilter').style.display = used.size > 1 ? '' : 'none';
     const board = $('#board');
     const list = state.orders.slice().sort((a, b) => a.createdAt - b.createdAt).filter(o => visibleItems(o).length);
     if (!list.length) { board.innerHTML = `<div class="empty">Nenhum pedido em produção 🎉</div>`; updateCounts(); return; }
@@ -403,8 +403,8 @@
       return `<article class="order ${lvl}" data-id="${o.id}">
         <div class="head">
           <div style="min-width:0">
-            <div class="id">${o.type === 'Mesa' && /^\d/.test(o.ident) ? 'Mesa ' : ''}${esc(o.ident)}<span class="seq">#${o.seq}</span>${o.origin ? `<span class="origin">${esc(o.origin)}</span>` : ''}</div>
-            <div class="meta">${esc(o.type)} · entrou ${hhmm(o.createdAt)}${o.raw ? ` · <a href="#" data-raw="${o.id}" style="color:inherit">comprovante</a>` : ''}</div>
+            <div class="id">${o.type === 'Mesa' && /^\d/.test(o.ident) ? 'Mesa ' : ''}${esc(o.ident)}</div>
+            <div class="meta">#${o.seq} · ${esc(o.type)}${o.origin ? ` · ${esc(o.origin)}` : ''} · entrou ${hhmm(o.createdAt)}${o.raw ? ` · <a href="#" data-raw="${o.id}" style="color:inherit">comprovante</a>` : ''}</div>
           </div>
           <div class="timer" data-t="${o.createdAt}" data-type="${esc(o.type)}">${fmt(now() - o.createdAt)}</div>
         </div>
