@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KDS Restaurante</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#181b22; --panel2:#20242d; --line:#2c313c;
+    --text:#eef1f6; --muted:#9aa3b2;
+    --ok:#1fae5b; --ok-bg:#0f2e1d;
+    --warn:#f2b705; --warn-bg:#3a2f05;
+    --late:#e5383b; --late-bg:#3d0f10;
+    --accent:#3b82f6;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  button{font:inherit;cursor:pointer;border:0;border-radius:10px}
+  input,select,textarea{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;width:100%}
+  textarea{resize:vertical;min-height:44px}
+  label{font-size:.85rem;color:var(--muted);display:block;margin-bottom:6px}
+
+  header{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+  .brand{font-weight:800;letter-spacing:.5px}
+  .brand small{color:var(--muted);font-weight:500;margin-left:8px}
+  nav{display:flex;gap:8px;flex-wrap:wrap}
+  nav button{background:var(--panel2);color:var(--text);padding:12px 18px;font-weight:700}
+  nav button.active{background:var(--accent)}
+  .clock{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:700}
+
+  main{padding:16px;max-width:1600px;margin:0 auto}
+  .view{display:none}.view.active{display:block}
+
+  /* ---------- Lançamento ---------- */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px}
+  .card-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .seg{display:flex;gap:8px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:90px;background:var(--panel2);color:var(--text);padding:14px;font-weight:700;border:2px solid transparent}
+  .seg button.on{border-color:var(--accent);background:#1b2a45}
+  .item-row{display:grid;grid-template-columns:70px 1fr 1fr 130px 44px;gap:8px;align-items:start;margin-bottom:8px}
+  .item-row button.rm{background:var(--panel2);color:var(--late);height:46px;font-size:1.2rem}
+  .quick{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 16px}
+  .quick button{background:var(--panel2);color:var(--text);padding:8px 12px;font-size:.9rem}
+  .btn-primary{background:var(--accent);color:#fff;padding:16px 22px;font-weight:800;font-size:1.05rem}
+  .btn-ghost{background:var(--panel2);color:var(--text);padding:12px 16px;font-weight:700}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ok);color:#fff;padding:14px 22px;border-radius:12px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:50}
+  .toast.show{opacity:1}
+
+  /* ---------- KDS ---------- */
+  .kds-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .legend{display:flex;gap:14px;color:var(--muted);font-size:.9rem;flex-wrap:wrap}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+  .order{background:var(--panel);border-radius:var(--radius);border:3px solid var(--ok);display:flex;flex-direction:column;overflow:hidden}
+  .order .head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--ok-bg)}
+  .order.warn{border-color:var(--warn)} .order.warn .head{background:var(--warn-bg)}
+  .order.late{border-color:var(--late);animation:pulse 1s ease-in-out infinite} .order.late .head{background:var(--late-bg)}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(229,56,59,.7)}50%{box-shadow:0 0 0 10px rgba(229,56,59,0)}}
+  .order .id{font-size:1.4rem;font-weight:900}
+  .order .meta{font-size:.8rem;color:var(--muted)}
+  .timer{font-size:2rem;font-weight:900;font-variant-numeric:tabular-nums}
+  .order.ok .timer{color:var(--ok)} .order.warn .timer{color:var(--warn)} .order.late .timer{color:var(--late)}
+  .seq{font-size:.75rem;background:#0006;padding:2px 8px;border-radius:999px;margin-left:6px;color:var(--muted)}
+  .items{padding:8px;display:flex;flex-direction:column;gap:8px;flex:1}
+  .item{display:flex;gap:10px;align-items:center;background:var(--panel2);border-radius:10px;padding:10px;min-height:64px;border:2px solid transparent;text-align:left;color:var(--text);width:100%}
+  .item .qty{font-size:1.3rem;font-weight:900;min-width:38px;text-align:center}
+  .item .name{font-weight:700;font-size:1.05rem}
+  .item .obs{color:#ffb4a2;font-weight:700;font-size:.9rem;margin-top:2px}
+  .item .tag{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .item .chk{margin-left:auto;font-size:.8rem;font-weight:800;padding:8px 10px;border-radius:8px;background:#0005;white-space:nowrap}
+  .item.done{opacity:.55;border-color:var(--ok)} .item.done .name{text-decoration:line-through}
+  .item.done .chk{background:var(--ok);color:#fff}
+  .order .foot{padding:8px}
+  .bump{width:100%;padding:18px;font-size:1.1rem;font-weight:900;background:var(--panel2);color:var(--muted)}
+  .bump.ready{background:var(--ok);color:#fff}
+  .empty{color:var(--muted);text-align:center;padding:60px 0;font-size:1.1rem}
+
+  /* ---------- Dashboard ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:18px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .kpi .lbl{color:var(--muted);font-size:.85rem}
+  .kpi .val{font-size:2.2rem;font-weight:900;margin-top:6px;font-variant-numeric:tabular-nums}
+  .kpi .sub{color:var(--muted);font-size:.8rem;margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:.92rem}
+  th{color:var(--muted);font-weight:600}
+  .pill{padding:3px 10px;border-radius:999px;font-weight:700;font-size:.8rem}
+  .pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.late{background:var(--late-bg);color:var(--late)}
+  .two{display:grid;grid-template-columns:1fr 2fr;gap:14px}
+  .bars .row{display:grid;grid-template-columns:80px 1fr 70px;gap:10px;align-items:center;margin:10px 0}
+  .bars .track{background:var(--panel2);height:14px;border-radius:999px;overflow:hidden}
+  .bars .fill{height:100%;background:var(--accent)}
+  .settings{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-top:18px}
+  .settings > div{width:160px}
+  .table-wrap{overflow-x:auto}
+
+  @media (max-width:760px){
+    .form-grid,.two{grid-template-columns:1fr}
+    .item-row{grid-template-columns:60px 1fr 44px}
+    .item-row .obs-in,.item-row .st-in{grid-column:1 / -1}
+    .timer{font-size:1.6rem}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">KDS<small>Controle de Preparo</small></div>
+  <nav>
+    <button data-view="pos">Lançamento</button>
+    <button data-view="kds" class="active">Cozinha (KDS)</button>
+    <button data-view="dash">Métricas</button>
+  </nav>
+  <div class="clock" id="clock">--:--:--</div>
+</header>
+
+<main>
+  <!-- ================= LANÇAMENTO ================= -->
+  <section class="view" id="view-pos">
+    <div class="form-grid">
+      <div class="card-box">
+        <label>Tipo</label>
+        <div class="seg" id="typeSeg">
+          <button data-type="Mesa" class="on">Mesa</button>
+          <button data-type="Delivery">Delivery</button>
+          <button data-type="Balcão">Balcão</button>
+        </div>
+        <div style="margin-top:14px">
+          <label for="ident">Nº da mesa / identificação</label>
+          <input id="ident" placeholder="Ex.: 12  ou  iFood #4521" autocomplete="off">
+        </div>
+      </div>
+      <div class="card-box">
+        <label>Praça padrão (para novos itens)</label>
+        <div class="seg" id="stationSeg">
+          <button data-st="Cozinha" class="on">Cozinha</button>
+          <button data-st="Chapa">Chapa</button>
+          <button data-st="Bar">Bar</button>
+        </div>
+        <div style="margin-top:14px">
+          <label for="orderObs">Observação geral do pedido</label>
+          <input id="orderObs" placeholder="Ex.: cliente com pressa, alergia a amendoim">
+        </div>
+      </div>
+    </div>
+
+    <div class="card-box" style="max-width:900px;margin-top:16px">
+      <label>Atalhos de itens (toque para adicionar)</label>
+      <div class="quick" id="quick"></div>
+      <div class="item-row" style="color:var(--muted);font-size:.8rem">
+        <div>Qtd</div><div>Item</div><div class="obs-in">Observação</div><div class="st-in">Praça</div><div></div>
+      </div>
+      <div id="itemRows"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn-ghost" id="addRow">+ Adicionar item</button>
+        <button class="btn-primary" id="sendOrder" style="margin-left:auto">Enviar para produção →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= KDS ================= -->
+  <section class="view active" id="view-kds">
+    <div class="kds-bar">
+      <div class="seg" id="kdsFilter" style="max-width:560px;flex:1">
+        <button data-f="Todas" class="on">Todas</button>
+        <button data-f="Cozinha">Cozinha</button>
+        <button data-f="Chapa">Chapa</button>
+        <button data-f="Bar">Bar</button>
+      </div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--ok)"></i><span id="lgOk"></span></span>
+        <span><i class="dot" style="background:var(--warn)"></i><span id="lgWarn"></span></span>
+        <span><i class="dot" style="background:var(--late)"></i><span id="lgLate"></span></span>
+        <span id="counts"></span>
+      </div>
+    </div>
+    <div class="board" id="board"></div>
+  </section>
+
+  <!-- ================= DASHBOARD ================= -->
+  <section class="view" id="view-dash">
+    <div class="kpis">
+      <div class="kpi"><div class="lbl">Tempo Médio de Preparo (TMT)</div><div class="val" id="kTmt">--</div><div class="sub">pedidos expedidos hoje</div></div>
+      <div class="kpi"><div class="lbl">Pedidos concluídos</div><div class="val" id="kDone">0</div><div class="sub" id="kOpen"></div></div>
+      <div class="kpi"><div class="lbl">Entregues no prazo</div><div class="val" id="kOnTime">--</div><div class="sub" id="kOnTimeSub"></div></div>
+      <div class="kpi"><div class="lbl">Pior tempo do dia</div><div class="val" id="kMax">--</div><div class="sub" id="kMaxSub"></div></div>
+    </div>
+    <div class="two">
+      <div class="card-box">
+        <div class="lbl" style="color:var(--muted);margin-bottom:6px">TMT por praça</div>
+        <div class="bars" id="bars"></div>
+      </div>
+      <div class="card-box">
+        <div style="color:var(--muted);margin-bottom:6px">Últimos pedidos expedidos</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Pedido</th><th>Entrada</th><th>Saída</th><th>Itens</th><th>Tempo</th></tr></thead>
+          <tbody id="hist"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div class="card-box settings">
+      <div><label for="cfgWarn">Amarelo a partir de (min)</label><input type="number" id="cfgWarn" min="1"></div>
+      <div><label for="cfgLate">Vermelho a partir de (min)</label><input type="number" id="cfgLate" min="2"></div>
+      <div><label for="cfgSound">Alerta sonoro</label>
+        <select id="cfgSound"><option value="1">Ligado</option><option value="0">Desligado</option></select></div>
+      <button class="btn-ghost" id="saveCfg">Salvar</button>
+      <button class="btn-ghost" id="resetDemo" style="margin-left:auto">Recarregar pedidos de demonstração</button>
+      <button class="btn-ghost" id="clearAll" style="color:var(--late)">Zerar o dia</button>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  // ================= Estado e persistência =================
+  const KEY = 'kds_proto_v1';
+  const MIN = 60 * 1000;
+  const STATIONS = ['Cozinha', 'Chapa', 'Bar'];
+  const QUICK = [
+    ['Filé à parmegiana','Cozinha'],['Risoto de cogumelos','Cozinha'],['Salada Caesar','Cozinha'],
+    ['X-Burger','Chapa'],['Picanha na chapa','Chapa'],['Batata frita','Chapa'],
+    ['Caipirinha','Bar'],['Chopp','Bar'],['Suco de laranja','Bar']
+  ];
+
+  let state = load() || seedDemo();
+  let uid = Date.now();
+  const nid = () => (uid++).toString(36);
+
+  function load() {
+    try { const s = JSON.parse(localStorage.getItem(KEY)); return s && s.orders ? s : null; } catch { return null; }
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
+
+  function seedDemo() {
+    const now = Date.now();
+    const mk = (ident, type, agoMin, items, obs = '') => ({
+      id: Math.random().toString(36).slice(2), seq: 0, ident, type, obs, createdAt: now - agoMin * MIN,
+      items: items.map(([qty, name, station, iobs = '', done = false]) => ({ id: Math.random().toString(36).slice(2), qty, name, station, obs: iobs, doneAt: done ? now - 60000 : null }))
+    });
+    const orders = [
+      mk('22', 'Mesa', 21.5, [[2,'Picanha na chapa','Chapa','1 ao ponto, 1 bem passada'],[1,'Batata frita','Chapa','',true],[2,'Chopp','Bar','',true]]),
+      mk('iFood #4521', 'Delivery', 16.2, [[1,'Risoto de cogumelos','Cozinha','sem queijo'],[1,'Salada Caesar','Cozinha','molho à parte']], 'Motoboy aguardando'),
+      mk('07', 'Mesa', 13.4, [[1,'Filé à parmegiana','Cozinha'],[1,'X-Burger','Chapa','sem cebola'],[1,'Suco de laranja','Bar','sem açúcar',true]]),
+      mk('15', 'Mesa', 10.8, [[3,'Caipirinha','Bar','1 de vodka'],[1,'Batata frita','Chapa','bem crocante']]),
+      mk('Balcão 3', 'Balcão', 6, [[2,'X-Burger','Chapa','1 sem picles']]),
+      mk('04', 'Mesa', 2.5, [[1,'Salada Caesar','Cozinha'],[2,'Chopp','Bar']]),
+      mk('Rappi #889', 'Delivery', 0.4, [[1,'Filé à parmegiana','Cozinha','arroz extra'],[1,'Batata frita','Chapa']])
+    ];
+    orders.forEach((o, i) => o.seq = i + 1);
+    // histórico fictício do dia para o dashboard já ter números
+    const history = [];
+    const samples = [[8.2,'Cozinha'],[12.5,'Chapa'],[6.1,'Bar'],[17.8,'Cozinha'],[9.4,'Chapa'],[11.2,'Cozinha'],[4.3,'Bar'],[14.6,'Chapa'],[19.9,'Cozinha'],[7.7,'Chapa'],[3.9,'Bar'],[10.1,'Cozinha']];
+    samples.forEach(([m, st], i) => {
+      const done = now - (180 - i * 12) * MIN;
+      history.push({ id: 'h' + i, ident: String(10 + i), type: 'Mesa', createdAt: done - m * MIN, doneAt: done, itemCount: 1 + (i % 3), stations: [st] });
+    });
+    return { orders, history, seq: orders.length, cfg: { warn: 10, late: 15, sound: 1 } };
+  }
+
+  // ================= Utilitários =================
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt = ms => { const t = Math.max(0, Math.floor(ms / 1000)); const m = Math.floor(t / 60), s = t % 60; return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; };
+  const hhmm = ts => new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const level = ms => ms >= state.cfg.late * MIN ? 'late' : ms >= state.cfg.warn * MIN ? 'warn' : 'ok';
+  function toast(msg, color) { const t = $('#toast'); t.textContent = msg; t.style.background = color || 'var(--ok)'; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2200); }
+
+  // Alerta sonoro curto quando um pedido fica vermelho
+  let actx;
+  function beep() {
+    if (!+state.cfg.sound) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.25].forEach(d => {
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.frequency.value = 880; o.connect(g); g.connect(actx.destination);
+        g.gain.setValueAtTime(0.15, actx.currentTime + d); g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + d + 0.2);
+        o.start(actx.currentTime + d); o.stop(actx.currentTime + d + 0.2);
+      });
+    } catch {}
+  }
+  const alerted = new Set(state.orders.filter(o => level(Date.now() - o.createdAt) === 'late').map(o => o.id));
+
+  // ================= Navegação =================
+  document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x === b));
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + b.dataset.view));
+    if (b.dataset.view === 'dash') renderDash();
+    if (b.dataset.view === 'pos') $('#ident').focus();
+  });
+  function segment(sel, onPick) {
+    document.querySelectorAll(sel + ' button').forEach(b => b.onclick = () => {
+      document.querySelectorAll(sel + ' button').forEach(x => x.classList.toggle('on', x === b)); onPick(b);
+    });
+  }
+
+  // ================= Lançamento =================
+  let posType = 'Mesa', posStation = 'Cozinha', kdsFilter = 'Todas';
+  segment('#typeSeg', b => posType = b.dataset.type);
+  segment('#stationSeg', b => posStation = b.dataset.st);
+  segment('#kdsFilter', b => { kdsFilter = b.dataset.f; renderBoard(true); });
+
+  function addRow(name = '', station = posStation) {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `
+      <input type="number" min="1" value="1" class="q" aria-label="Quantidade">
+      <input class="n" placeholder="Nome do item" value="${esc(name)}" aria-label="Item">
+      <input class="o obs-in" placeholder="Ex.: sem cebola, mal passada" aria-label="Observação">
+      <select class="s st-in" aria-label="Praça">${STATIONS.map(s => `<option ${s === station ? 'selected' : ''}>${s}</option>`).join('')}</select>
+      <button class="rm" title="Remover">×</button>`;
+    row.querySelector('.rm').onclick = () => { row.remove(); if (!$('#itemRows').children.length) addRow(); };
+    $('#itemRows').appendChild(row);
+    return row;
+  }
+  $('#quick').innerHTML = QUICK.map(([n, s]) => `<button data-n="${esc(n)}" data-s="${s}">${esc(n)} <span style="color:var(--muted)">· ${s}</span></button>`).join('');
+  $('#quick').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const rows = [...document.querySelectorAll('#itemRows .item-row')];
+    const empty = rows.find(r => !r.querySelector('.n').value.trim());
+    if (empty) { empty.querySelector('.n').value = b.dataset.n; empty.querySelector('.s').value = b.dataset.s; }
+    else addRow(b.dataset.n, b.dataset.s);
+  };
+  $('#addRow').onclick = () => addRow().querySelector('.n').focus();
+  addRow();
+
+  $('#sendOrder').onclick = () => {
+    const ident = $('#ident').value.trim();
+    const items = [...document.querySelectorAll('#itemRows .item-row')].map(r => ({
+      id: nid(), qty: Math.max(1, +r.querySelector('.q').value || 1), name: r.querySelector('.n').value.trim(),
+      obs: r.querySelector('.o').value.trim(), station: r.querySelector('.s').value, doneAt: null
+    })).filter(i => i.name);
+    if (!ident) { toast('Informe a mesa ou identificação', 'var(--late)'); $('#ident').focus(); return; }
+    if (!items.length) { toast('Adicione ao menos um item', 'var(--late)'); return; }
+    state.seq++;
+    state.orders.push({ id: nid(), seq: state.seq, ident, type: posType, obs: $('#orderObs').value.trim(), createdAt: Date.now(), items });
+    save();
+    $('#ident').value = ''; $('#orderObs').value = ''; $('#itemRows').innerHTML = ''; addRow();
+    renderBoard(true);
+    toast(`Pedido ${posType} ${ident} enviado (#${state.seq})`);
+  };
+
+  // ================= KDS =================
+  function visibleItems(o) { return kdsFilter === 'Todas' ? o.items : o.items.filter(i => i.station === kdsFilter); }
+
+  function renderBoard() {
+    const board = $('#board');
+    const list = state.orders.slice().sort((a, b) => a.createdAt - b.createdAt).filter(o => visibleItems(o).length);
+    if (!list.length) { board.innerHTML = `<div class="empty">Nenhum pedido em produção ${kdsFilter !== 'Todas' ? 'nesta praça' : ''} 🎉</div>`; updateCounts(); return; }
+    board.innerHTML = list.map(o => {
+      const its = visibleItems(o);
+      const allDone = o.items.every(i => i.doneAt);
+      const lvl = level(Date.now() - o.createdAt);
+      return `<article class="order ${lvl}" data-id="${o.id}">
+        <div class="head">
+          <div>
+            <div class="id">${o.type === 'Mesa' ? 'Mesa ' : ''}${esc(o.ident)}<span class="seq">#${o.seq}</span></div>
+            <div class="meta">${esc(o.type)} · entrou ${hhmm(o.createdAt)}</div>
+          </div>
+          <div class="timer" data-t="${o.createdAt}">${fmt(Date.now() - o.createdAt)}</div>
+        </div>
+        ${o.obs ? `<div style="padding:8px 14px 0;color:#ffb4a2;font-weight:700">⚠ ${esc(o.obs)}</div>` : ''}
+        <div class="items">
+          ${its.map(i => `<button class="item ${i.doneAt ? 'done' : ''}" data-item="${i.id}">
+              <div class="qty">${i.qty}×</div>
+              <div><div class="name">${esc(i.name)}</div>${i.obs ? `<div class="obs">→ ${esc(i.obs)}</div>` : ''}<div class="tag">${i.station}</div></div>
+              <div class="chk">${i.doneAt ? '✓ PRONTO' : 'PRONTO?'}</div>
+            </button>`).join('')}
+          ${kdsFilter !== 'Todas' && its.length < o.items.length ? `<div class="meta" style="padding:0 6px">+${o.items.length - its.length} item(ns) em outra praça (${o.items.filter(i => i.doneAt).length}/${o.items.length} prontos no total)</div>` : ''}
+        </div>
+        <div class="foot"><button class="bump ${allDone ? 'ready' : ''}" data-bump="${o.id}">${allDone ? '✓ EXPEDIR PEDIDO' : `Expedir (${o.items.filter(i => i.doneAt).length}/${o.items.length} prontos)`}</button></div>
+      </article>`;
+    }).join('');
+    updateCounts();
+  }
+
+  $('#board').onclick = e => {
+    const itemBtn = e.target.closest('[data-item]');
+    const bumpBtn = e.target.closest('[data-bump]');
+    if (itemBtn) {
+      const o = state.orders.find(o => o.id === itemBtn.closest('.order').dataset.id);
+      const it = o && o.items.find(i => i.id === itemBtn.dataset.item);
+      if (it) { it.doneAt = it.doneAt ? null : Date.now(); save(); renderBoard(); }
+    } else if (bumpBtn) {
+      const o = state.orders.find(o => o.id === bumpBtn.dataset.bump);
+      if (!o) return;
+      const pending = o.items.filter(i => !i.doneAt).length;
+      if (pending && !confirm(`Ainda há ${pending} item(ns) não marcados como pronto. Expedir mesmo assim?`)) return;
+      const now = Date.now();
+      state.history.push({ id: o.id, ident: o.ident, type: o.type, createdAt: o.createdAt, doneAt: now, itemCount: o.items.length,
+        stations: [...new Set(o.items.map(i => i.station))] });
+      state.orders = state.orders.filter(x => x !== o);
+      save(); renderBoard();
+      toast(`${o.type} ${o.ident} expedido em ${fmt(now - o.createdAt)}`);
+    }
+  };
+
+  function updateCounts() {
+    const now = Date.now(); const c = { ok: 0, warn: 0, late: 0 };
+    state.orders.forEach(o => c[level(now - o.createdAt)]++);
+    $('#counts').textContent = `Em produção: ${state.orders.length} · atrasados: ${c.late}`;
+    $('#lgOk').textContent = `0–${state.cfg.warn} min`;
+    $('#lgWarn').textContent = `${state.cfg.warn}–${state.cfg.late} min`;
+    $('#lgLate').textContent = `> ${state.cfg.late} min`;
+  }
+
+  // Atualização a cada segundo: só mexe no texto e na classe de cor (sem re-render pesado)
+  function tick() {
+    const now = Date.now();
+    $('#clock').textContent = new Date(now).toLocaleTimeString('pt-BR');
+    document.querySelectorAll('.order').forEach(card => {
+      const t = card.querySelector('.timer'); const el = now - +t.dataset.t;
+      t.textContent = fmt(el);
+      const lvl = level(el);
+      if (!card.classList.contains(lvl)) { card.classList.remove('ok', 'warn', 'late'); card.classList.add(lvl); }
+      if (lvl === 'late' && !alerted.has(card.dataset.id)) { alerted.add(card.dataset.id); beep(); }
+    });
+    updateCounts();
+  }
+
+  // ================= Dashboard =================
+  function startOfDay() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function renderDash() {
+    const today = state.history.filter(h => h.doneAt >= startOfDay());
+    const durs = today.map(h => h.doneAt - h.createdAt);
+    const avg = durs.length ? durs.reduce((a, b) => a + b, 0) / durs.length : 0;
+    const onTime = durs.filter(d => d < state.cfg.late * MIN).length;
+    $('#kTmt').textContent = durs.length ? fmt(avg) : '--';
+    $('#kDone').textContent = today.length;
+    $('#kOpen').textContent = `${state.orders.length} em produção agora`;
+    $('#kOnTime').textContent = durs.length ? Math.round(onTime / durs.length * 100) + '%' : '--';
+    $('#kOnTime').style.color = !durs.length ? '' : onTime / durs.length >= .85 ? 'var(--ok)' : onTime / durs.length >= .7 ? 'var(--warn)' : 'var(--late)';
+    $('#kOnTimeSub').textContent = `${onTime} de ${durs.length} abaixo de ${state.cfg.late} min`;
+    const maxI = durs.indexOf(Math.max(...durs));
+    $('#kMax').textContent = durs.length ? fmt(durs[maxI]) : '--';
+    $('#kMaxSub').textContent = durs.length ? `${today[maxI].type} ${today[maxI].ident} às ${hhmm(today[maxI].doneAt)}` : '';
+
+    const per = STATIONS.map(st => {
+      const d = today.filter(h => h.stations.includes(st)).map(h => h.doneAt - h.createdAt);
+      return [st, d.length ? d.reduce((a, b) => a + b, 0) / d.length : 0, d.length];
+    });
+    const top = Math.max(state.cfg.late * MIN, ...per.map(p => p[1]));
+    $('#bars').innerHTML = per.map(([st, v, n]) => `<div class="row"><div>${st}</div>
+      <div class="track"><div class="fill" style="width:${(v / top * 100).toFixed(1)}%;background:var(--${level(v)})"></div></div>
+      <div style="text-align:right">${n ? fmt(v) : '--'}</div></div>`).join('') +
+      `<div class="meta" style="color:var(--muted);font-size:.8rem">Pedidos com itens em mais de uma praça contam em cada uma.</div>`;
+
+    $('#hist').innerHTML = today.slice().sort((a, b) => b.doneAt - a.doneAt).slice(0, 15).map(h => {
+      const d = h.doneAt - h.createdAt;
+      return `<tr><td>${esc(h.type)} ${esc(h.ident)}</td><td>${hhmm(h.createdAt)}</td><td>${hhmm(h.doneAt)}</td><td>${h.itemCount}</td><td><span class="pill ${level(d)}">${fmt(d)}</span></td></tr>`;
+    }).join('') || '<tr><td colspan="5" style="color:var(--muted)">Nenhum pedido expedido hoje.</td></tr>';
+  }
+
+  // ================= Configurações =================
+  function fillCfg() { $('#cfgWarn').value = state.cfg.warn; $('#cfgLate').value = state.cfg.late; $('#cfgSound').value = state.cfg.sound; }
+  $('#saveCfg').onclick = () => {
+    const w = +$('#cfgWarn').value, l = +$('#cfgLate').value;
+    if (!(w > 0 && l > w)) { toast('O vermelho precisa ser maior que o amarelo', 'var(--late)'); return; }
+    state.cfg = { warn: w, late: l, sound: +$('#cfgSound').value }; save(); renderBoard(); renderDash(); toast('Configurações salvas');
+  };
+  $('#resetDemo').onclick = () => { if (confirm('Substituir tudo pelos pedidos de demonstração?')) { const cfg = state.cfg; state = seedDemo(); state.cfg = cfg; alerted.clear(); save(); renderBoard(); renderDash(); toast('Demonstração recarregada'); } };
+  $('#clearAll').onclick = () => { if (confirm('Apagar todos os pedidos e o histórico?')) { state.orders = []; state.history = []; state.seq = 0; save(); renderBoard(); renderDash(); } };
+
+  // Sincroniza entre abas (ex.: lançamento em uma aba, KDS em outra)
+  window.addEventListener('storage', e => { if (e.key === KEY) { const s = load(); if (s) { state = s; renderBoard(); renderDash(); fillCfg(); } } });
+
+  fillCfg(); renderBoard(); tick(); setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
