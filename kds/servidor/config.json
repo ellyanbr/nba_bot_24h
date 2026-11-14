@@ -1,0 +1,13 @@
+{
+  "impressora": { "ip": "192.168.0.100", "porta": 9100 },
+  "portaCaptura": 9100,
+  "portaWeb": 8080,
+  "codificacao": "cp850",
+  "repassarParaImpressora": true,
+  "guardarComprovantesBrutos": true,
+  "ignorarReimpressaoMinutos": 10,
+  "pracas": {
+    "padrao": "Cozinha",
+    "regras": {}
+  }
+}
