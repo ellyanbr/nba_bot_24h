@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #07080a;
+  --color-ink-900: #0c0d10;
+  --color-ink-850: #111317;
+  --color-ink-800: #16181d;
+  --color-ink-700: #1f2229;
+  --color-ink-600: #2a2e37;
+  --color-ink-500: #3a3f4b;
+  --color-ink-400: #6b7280;
+  --color-ink-300: #9aa1ad;
+  --color-ink-200: #c9ced6;
+  --color-ink-100: #e8eaee;
+
+  --color-blood-700: #9f1220;
+  --color-blood-600: #c1121f;
+  --color-blood-500: #e01e2d;
+  --color-blood-400: #f04452;
+  --color-blood-300: #ff7a85;
+
+  --color-corner-red: #e01e2d;
+  --color-corner-blue: #3b82f6;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-ink-950);
+  color: var(--color-ink-100);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-blood-600);
+  color: white;
+}
+
+/* Campos de formulário consistentes */
+.field-input {
+  @apply w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-400 outline-none transition focus:border-blood-500 focus:ring-2 focus:ring-blood-500/25 disabled:opacity-50;
+}
+
+select.field-input {
+  @apply pr-8;
+}
+
+input[type="date"].field-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-ink-600);
+  border-radius: 3px;
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
