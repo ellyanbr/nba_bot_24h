@@ -12,6 +12,7 @@ import type {
   Prediction,
   Bet,
 } from "@/lib/domain/types";
+import { resultKind } from "@/lib/domain/types";
 import { todayIso } from "@/lib/utils";
 import { getShowDemo } from "./preferences";
 
@@ -65,7 +66,8 @@ export interface FightHistoryEntry {
   event: FightEvent | null;
   opponent: Fighter | null;
   result: FightResult | null;
-  outcome: "V" | "D" | "E" | "NC" | "Agendada" | "Cancelada";
+  /** V vitória · D derrota · E empate · NC sem resultado · Anulada (resultado revertido) · Agendada · Cancelada */
+  outcome: "V" | "D" | "E" | "NC" | "Anulada" | "Agendada" | "Cancelada";
 }
 
 export interface FighterProfile {
@@ -105,8 +107,10 @@ export async function getFighterProfile(id: string): Promise<FighterProfile | nu
       let outcome: FightHistoryEntry["outcome"] = "Agendada";
       if (fight.status === "cancelled") outcome = "Cancelada";
       else if (result) {
-        if (result.method === "Sem resultado") outcome = "NC";
-        else if (!result.winnerId) outcome = "E";
+        const kind = resultKind(result.method);
+        if (kind === "no_contest") outcome = "NC";
+        else if (kind === "overturned") outcome = "Anulada";
+        else if (kind === "draw" || !result.winnerId) outcome = "E";
         else outcome = result.winnerId === id ? "V" : "D";
       }
       return { fight, event, opponent: fById.get(oppId) ?? null, result, outcome };

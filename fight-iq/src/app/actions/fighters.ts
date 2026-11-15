@@ -139,8 +139,10 @@ export async function deleteFighter(id: string): Promise<ActionState> {
       }
     }
   }
-  await store.removeWhere("fighter_statistics", { fighterId: id });
-  await store.remove("fighters", id);
+  await store.atomic(async (tx) => {
+    await tx.removeWhere("fighter_statistics", { fighterId: id });
+    await tx.remove("fighters", id);
+  });
   revalidatePath("/", "layout");
   redirect("/lutadores");
 }

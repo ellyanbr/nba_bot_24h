@@ -91,17 +91,24 @@ O arquivo inteiro é validado antes de gravar (tudo ou nada); duplicados são ig
 3. Reinicie. Limitação: precisa de ~8 GB de RAM; mais lento e menos preciso que modelos comerciais.
 
 ### Supabase (PostgreSQL gerenciado)
-1. Crie um projeto no plano gratuito (confira os limites atuais em supabase.com/pricing).
-2. SQL Editor → execute, em ordem, todos os arquivos de `supabase/migrations/` (`0001` a `0004`). RLS ativado, sem políticas públicas.
-3. `.env.local`: `DATA_BACKEND=supabase`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
-4. Reinicie e, se quiser, use "Carregar demonstração" em Configurações.
+Passo a passo completo em [`docs/SUPABASE.md`](docs/SUPABASE.md): criar o projeto gratuito, aplicar as migrações `0001` a `0005`, configurar as chaves (somente no servidor) e rodar os testes de persistência, CRUD, transações e permissões contra o projeto real.
+
+## Integridade dos dados
+
+- **Resultado só a partir da data do evento** (formulário, servidor e CSV). Tolerância de fuso: a data precisa já ter começado em algum lugar do mundo (UTC+14).
+- **Natureza do resultado**: vitória, empate, sem resultado (NC) e **resultado anulado** (revertido depois da luta); luta **cancelada** é um status da luta, não um resultado. O histórico do atleta mostra V, D, E, NC e Anulada.
+- **Previsões anuladas** (empate, NC, resultado anulado, luta cancelada ou anulação manual) não contam como acerto nem como erro. O empate continua avaliável no Brier score, pois a estimativa inclui a probabilidade de empate.
+- **Apostas** (no vencedor previsto) são liquidadas pelo acerto do vencedor. Empate: devolvida em mercado de 2 vias, perdida em mercado de 3 vias.
+- **Transações**: operações que gravam em várias tabelas usam `store.atomic()` — tudo ou nada (local: gravação única do arquivo; Supabase: função `fightiq_apply_batch` numa transação PostgreSQL). Salvar a mesma análise duas vezes não duplica (id gerado no navegador); o resultado é único por luta.
 
 ## Testes
 
 ```bash
 npm test             # unitários + ponta a ponta
-npm run test:unit    # Vitest — regras puras (correção de previsões, probabilidades, CSV, comparação, etc.)
+npm run test:unit    # Vitest — regras puras, transações, banco local, segredos no bundle
 npm run build && npm run test:e2e   # Playwright — sobe o app com um banco temporário em test-results/
+DATABASE_URL=postgres://.../fightiq_test npm run test:db   # PostgreSQL real e descartável: migrações, RLS, permissões, rollback
+FIGHTIQ_SUPABASE_TEST=1 SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run test:supabase  # projeto Supabase real (não destrutivo)
 ```
 
 Na primeira vez, instale o navegador dos testes: `npx playwright install chromium` (ou defina `PW_CHROMIUM_PATH`).
@@ -119,4 +126,4 @@ Na primeira vez, instale o navegador dos testes: `npx playwright install chromiu
 - **Sem contas de usuário**: há apenas a senha única opcional (Basic Auth). Antes de expor publicamente, adicionar login.
 - Consultas compõem relações em memória — adequado ao volume de um MVP.
 - Não há integração automática com fontes de dados de MMA; a entrada é manual/CSV por escolha (custo zero e procedência controlada).
-- O Next.js 15 inclui internamente uma versão do PostCSS com alertas no `npm audit` que afetam apenas o build; a correção exige migrar para Next 16.
+- **Dependências**: `npm audit` tem 1 alerta restante (Zod, alto), mitigado sem migrar para o Zod 4 — os tamanhos de arrays são verificados antes da validação (medição e justificativa em `src/lib/utils/input-guards.ts`). O PostCSS embutido no Next e o minimatch do typescript-eslint são corrigidos por `overrides` pontuais no `package.json` (o CSS gerado ficou idêntico, byte a byte).

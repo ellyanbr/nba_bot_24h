@@ -131,6 +131,8 @@ export type ResultMethod =
   | "Desqualificação"
   | "Sem resultado"
   | "Empate"
+  /** Resultado oficial revertido depois da luta (ex.: "overturned" por exame antidoping). */
+  | "Resultado anulado"
   | "Outro";
 
 export const RESULT_METHODS: ResultMethod[] = [
@@ -142,8 +144,29 @@ export const RESULT_METHODS: ResultMethod[] = [
   "Desqualificação",
   "Sem resultado",
   "Empate",
+  "Resultado anulado",
   "Outro",
 ];
+
+/**
+ * Natureza do resultado de uma luta:
+ * - win: há vencedor (KO/TKO, finalização, decisões, desqualificação, outro);
+ * - draw: empate;
+ * - no_contest: luta sem resultado (ex.: golpe acidental que encerra a luta);
+ * - overturned: resultado oficial anulado depois da luta.
+ * Uma luta CANCELADA (não aconteceu) não tem resultado: fica em fights.status = "cancelled".
+ */
+export type ResultKind = "win" | "draw" | "no_contest" | "overturned";
+
+export function resultKind(method: string): ResultKind {
+  if (method === "Empate") return "draw";
+  if (method === "Sem resultado") return "no_contest";
+  if (method === "Resultado anulado") return "overturned";
+  return "win";
+}
+
+/** Por que uma previsão foi anulada (não conta como acerto nem como erro). */
+export type VoidReason = "draw" | "no_contest" | "overturned" | "cancelled" | "manual";
 
 export interface FightResult extends Provenance {
   id: ID;
@@ -234,6 +257,8 @@ export interface Prediction {
    * - "manual": marcação do usuário, SEM resultado oficial registrado (actual* ficam nulos).
    */
   resolution: "auto" | "manual" | null;
+  /** Preenchido quando status = "void". */
+  voidReason: VoidReason | null;
   winnerCorrect: boolean | null;
   methodCorrect: boolean | null;
   roundCorrect: boolean | null;
@@ -276,6 +301,11 @@ export interface Bet {
   decimalOdds: number;
   stake: number | null;
   bookmaker: string | null;
+  /**
+   * Mercado de vitória: "2way" (sem empate — empate devolve a aposta) ou
+   * "3way" (empate é uma opção — empate faz a aposta no atleta perder).
+   */
+  market: "2way" | "3way";
   status: BetStatus;
   createdAt: string;
   updatedAt: string;

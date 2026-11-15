@@ -18,6 +18,7 @@ const pred = (over: Partial<Prediction>): Prediction => ({
   notes: null,
   status: "pending",
   resolution: null,
+  voidReason: null,
   winnerCorrect: null,
   methodCorrect: null,
   roundCorrect: null,
@@ -79,5 +80,25 @@ describe("computePredictionStats", () => {
     expect(s.resolved).toBe(0);
     expect(s.scored).toBe(0);
     expect(s.pending).toBe(1);
+  });
+});
+
+describe("anuladas (empate, NC, resultado anulado, cancelada)", () => {
+  const voided = (voidReason: Prediction["voidReason"], actualMethod: string | null) =>
+    pred({ status: "void", resolution: "auto", voidReason, actualMethod, actualWinnerId: null });
+
+  it("não contam como acerto nem como erro, nem na calibração", () => {
+    const s = computePredictionStats([won(), voided("draw", "Empate"), voided("no_contest", "Sem resultado"), voided("overturned", "Resultado anulado"), voided("cancelled", null)]);
+    expect(s.resolved).toBe(1);
+    expect(s.accuracy).toBe(100);
+    expect(s.winnerGraded).toBe(1);
+    expect(s.buckets.reduce((n, b) => n + b.total, 0)).toBe(1);
+  });
+
+  it("empate entra no Brier (resultado real avaliável pela probabilidade de empate); NC e anulada não", () => {
+    const s = computePredictionStats([voided("draw", "Empate"), voided("no_contest", "Sem resultado"), voided("overturned", "Resultado anulado")]);
+    expect(s.scored).toBe(1);
+    // estimativa 70/30/0 e resultado empate: (0,7)² + (0,3)² + (0 − 1)² = 1,58
+    expect(s.brier).toBeCloseTo(1.58, 10);
   });
 });

@@ -55,7 +55,7 @@ export default async function SettingsPage() {
             <ol className="list-decimal space-y-1 pl-5 text-[13px]">
               <li>Crie um projeto gratuito em supabase.com.</li>
               <li>
-                No SQL Editor, execute <code className="text-ink-100">supabase/migrations/0001_init.sql</code>.
+                No SQL Editor, execute em ordem os arquivos <code className="text-ink-100">supabase/migrations/0001</code> a <code className="text-ink-100">0005</code> (passo a passo em <code className="text-ink-100">docs/SUPABASE.md</code>).
               </li>
               <li>Em Project Settings → API, copie a URL e a service_role key.</li>
               <li>

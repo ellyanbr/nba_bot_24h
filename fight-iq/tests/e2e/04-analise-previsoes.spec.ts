@@ -1,7 +1,8 @@
 import { createFighter, createSource, expect, test, uid, registerResult } from "./helpers";
 import type { Page } from "@playwright/test";
 
-async function setupFight(page: Page) {
+/** Cria fonte, dois atletas e um evento com uma luta. Por padrão o evento já ocorreu (aceita resultado). */
+async function setupFight(page: Page, opts: { date?: string } = {}) {
   const src = `Fonte ${uid()}`;
   await createSource(page, src);
   const k = uid();
@@ -12,7 +13,7 @@ async function setupFight(page: Page) {
   await page.goto("/eventos/novo");
   await page.fill('input[name="name"]', `Card ${k}`);
   await page.selectOption('select[name="organizationId"]', "org-ufc");
-  await page.fill('input[name="date"]', "2027-05-01");
+  await page.fill('input[name="date"]', opts.date ?? "2026-01-10");
   await page.selectOption('select[name="sourceId"]', { label: src });
   await page.getByRole("button", { name: "Criar evento" }).click();
   await page.waitForURL(/\/eventos\/[0-9a-f-]{36}$/);

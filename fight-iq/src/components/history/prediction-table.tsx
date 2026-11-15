@@ -5,9 +5,12 @@ import { Badge, DemoBadge } from "@/components/ui";
 import { ActionButton } from "@/components/ui/client";
 import type { Prediction } from "@/lib/domain/types";
 import type { PredictionRow } from "@/lib/services/queries";
+import { VOID_REASON_LABEL } from "@/lib/analysis/grading";
 import { expectedValue } from "@/lib/analysis/probability";
 import { estimateOf, pickProbability } from "@/lib/analysis/prediction-stats";
 import { formatDate } from "@/lib/utils";
+
+export const BET_STATUS: Record<string, string> = { open: "aberta", won: "ganha", lost: "perdida", void: "devolvida" };
 
 export const PRED_STATUS = {
   pending: { label: "Pendente", tone: "blue" },
@@ -28,11 +31,20 @@ function Mark({ label, value }: { label: string; value: boolean | null | undefin
 /** Resultado real + detalhe da correção. Nunca exibe resultado que não foi registrado oficialmente. */
 export function ResolutionDetail({ p, nameA, nameB }: { p: Prediction; nameA: string; nameB: string }) {
   if (p.status === "pending") return <span className="text-ink-400">Aguardando resultado</span>;
-  if (p.resolution === "manual") return <span className="text-ink-400">Marcação manual — sem resultado oficial registrado</span>;
-  if (p.status === "void" && !p.actualMethod) return <span className="text-ink-400">Anulada</span>;
+  if (p.resolution === "manual") {
+    return <span className="text-ink-400">{p.status === "void" ? "Anulada manualmente — " : "Marcação manual — "}sem resultado oficial registrado</span>;
+  }
+  if (p.status === "void" && !p.actualMethod) {
+    return <span className="text-ink-400">Anulada{p.voidReason ? ` — ${VOID_REASON_LABEL[p.voidReason]}` : ""} · não conta como acerto nem erro</span>;
+  }
   const winner = p.actualWinnerId === p.fighterAId ? nameA : p.actualWinnerId === p.fighterBId ? nameB : "Sem vencedor";
   return (
     <span>
+      {p.status === "void" && (
+        <span className="block text-[11px] text-ink-400">
+          Anulada{p.voidReason ? ` — ${VOID_REASON_LABEL[p.voidReason]}` : ""} · não conta como acerto nem erro
+        </span>
+      )}
       <span className="text-ink-200">
         {winner}
         {p.actualMethod ? ` · ${p.actualMethod}` : ""}
@@ -115,6 +127,9 @@ export function PredictionTable({ rows, compact }: { rows: PredictionRow[]; comp
                       <>
                         {bet.decimalOdds.toFixed(2)}
                         {bet.bookmaker ? ` · ${bet.bookmaker}` : ""}
+                        <span className="block text-[11px] text-ink-400">
+                          {bet.market === "3way" ? "3 vias" : "2 vias"} · {BET_STATUS[bet.status]}
+                        </span>
                         {ev != null && (
                           <span className={ev > 0 ? "block text-[11px] text-emerald-300" : "block text-[11px] text-ink-400"}>
                             VE {ev > 0 ? "+" : ""}

@@ -7,6 +7,7 @@ import { AddFightForm, ResultForm } from "@/components/events/fight-forms";
 import { Avatar, Badge, Card, CardBody, CardHeader, DemoBadge, EmptyState, LinkButton } from "@/components/ui";
 import { ActionButton } from "@/components/ui/client";
 import { getStore } from "@/lib/data";
+import { eventHasStarted } from "@/lib/domain/event-dates";
 import { getEventDetail, listDataSources } from "@/lib/services/queries";
 import { cn, formatDate, recordString } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
   const [allFighters, sources] = await Promise.all([getStore().list("fighters"), listDataSources()]);
   const eligible = allFighters.filter((f) => f.isDemo === event.isDemo).sort((a, b) => a.name.localeCompare(b.name));
   const resultSources = sources.filter((s) => s.isDemo === event.isDemo);
+  const started = eventHasStarted(event.date);
 
   return (
     <>
@@ -116,7 +118,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                     <Swords className="h-3.5 w-3.5" /> Analisar
                   </LinkButton>
                   {fight.status !== "cancelled" && !result && (
-                    <ActionButton action={setFightStatus.bind(null, fight.id, "cancelled")} confirm="Marcar luta como cancelada?">
+                    <ActionButton action={setFightStatus.bind(null, fight.id, "cancelled")} confirm="Marcar luta como cancelada? As previsões pendentes desta luta serão anuladas.">
                       <Ban className="h-3.5 w-3.5" /> Cancelar luta
                     </ActionButton>
                   )}
@@ -129,7 +131,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                     <Trash2 className="h-3.5 w-3.5" /> Remover
                   </ActionButton>
                 </div>
-                {fight.status !== "cancelled" && (
+                {fight.status !== "cancelled" && !started && (
+                  <p className="border-t border-ink-700 px-4 py-3 text-xs text-ink-400">
+                    O resultado oficial poderá ser registrado a partir da data do evento ({formatDate(event.date)}).
+                  </p>
+                )}
+                {fight.status !== "cancelled" && started && (
                   <details className="border-t border-ink-700 px-4 py-3">
                     <summary className="cursor-pointer text-xs font-medium text-ink-300 hover:text-white">{result ? "Editar resultado" : "Registrar resultado oficial"}</summary>
                     <div className="mt-3">

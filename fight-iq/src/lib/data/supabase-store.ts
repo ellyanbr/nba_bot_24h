@@ -1,15 +1,30 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { TableName } from "@/lib/domain/types";
-import type { DataStore, Filter, Row } from "./store";
+import type { BatchOp, DataStore, Filter, Row } from "./store";
+import { BatchTransaction } from "./transaction";
 
-const toSnake = (s: string) => s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
-const toCamel = (s: string) => s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+export const toSnake = (s: string) => s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+export const toCamel = (s: string) => s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 
-function mapKeys(obj: unknown, fn: (k: string) => string): Record<string, unknown> {
+export function mapKeys(obj: unknown, fn: (k: string) => string): Record<string, unknown> {
   return Object.fromEntries(Object.entries(obj as Record<string, unknown>).map(([k, v]) => [fn(k), v]));
 }
-const fromDb = <R,>(row: unknown) => mapKeys(row, toCamel) as unknown as R;
+export const fromDb = <R,>(row: unknown) => mapKeys(row, toCamel) as unknown as R;
+
+/** Nome da função SQL transacional (migração 0005). */
+export const BATCH_FUNCTION = "fightiq_apply_batch";
+
+/** Converte operações da aplicação (camelCase) para o formato da função SQL (snake_case). */
+export function batchToSql(ops: BatchOp[]) {
+  return ops.map((o) =>
+    o.op === "insert"
+      ? { op: o.op, table: o.table, row: mapKeys(o.row, toSnake) }
+      : o.op === "update"
+        ? { op: o.op, table: o.table, id: o.id, patch: mapKeys(o.patch, toSnake) }
+        : { op: o.op, table: o.table, id: o.id },
+  );
+}
 
 /** Tamanho de página: não pode exceder o "Max rows" da API do projeto Supabase (padrão 1000). */
 export const PAGE_SIZE = 1000;
@@ -51,6 +66,27 @@ export class SupabaseStore implements DataStore {
       if (page.length < PAGE_SIZE) break;
     }
     return rows;
+  }
+
+  /**
+   * Transação: as escritas de `fn` são enviadas juntas à função SQL fightiq_apply_batch,
+   * executada numa única transação PostgreSQL (tudo ou nada). Requer a migração 0005.
+   * Limitação: as leituras acontecem antes do envio e não bloqueiam linhas; a consistência
+   * entre requisições concorrentes é garantida pelas restrições do banco (PK, únicas, FK).
+   */
+  async atomic<R>(fn: (tx: DataStore) => Promise<R>): Promise<R> {
+    const tx = new BatchTransaction(this, "supabase");
+    const result = await fn(tx);
+    if (tx.ops.length) {
+      const { error } = await this.client.rpc(BATCH_FUNCTION, { ops: batchToSql(tx.ops) });
+      if (error) {
+        const hint = /function .*fightiq_apply_batch|Could not find the function/i.test(error.message)
+          ? " Execute a migração supabase/migrations/0005_integridade.sql."
+          : "";
+        throw new Error(`Supabase: transação não aplicada (nenhuma alteração gravada). ${error.message}.${hint}`);
+      }
+    }
+    return result;
   }
 
   async get<T extends TableName>(table: T, id: string) {

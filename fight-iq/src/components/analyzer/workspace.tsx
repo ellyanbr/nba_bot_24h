@@ -10,7 +10,7 @@ import { runConsistencyChecks } from "@/lib/analysis/checks";
 import { fairOdds, validateEstimate, type Estimate, type MarketOdds } from "@/lib/analysis/probability";
 import type { ComparisonResult } from "@/lib/analysis/comparison";
 import { RESULT_METHODS, type AIOutput, type Basis, type Edge, type FactorAssessment } from "@/lib/domain/types";
-import { cn } from "@/lib/utils";
+import { cn, uuidV4 } from "@/lib/utils";
 import { MarketView } from "./market-view";
 import { Markdown } from "./markdown";
 
@@ -64,6 +64,8 @@ export function AnalyzerWorkspace({ comparison, fighterA, fighterB, fightId, sch
     summary: "",
   });
   const [morePaths, setMorePaths] = useState<Edge>("unknown");
+  // Identificador fixo desta análise: reenviar (duplo clique, nova tentativa) não cria duplicata.
+  const [clientId] = useState(() => uuidV4());
   const [withPrediction, setWithPrediction] = useState(false);
   const [pred, setPred] = useState({ pick: "A" as "A" | "B", method: "Qualquer", round: "", pA: "55", pDraw: "0", full: "", notes: "", bet: false, betIndex: "0", stake: "" });
   const [oddsRows, setOddsRows] = useState<OddsRow[]>([]);
@@ -141,6 +143,7 @@ export function AnalyzerWorkspace({ comparison, fighterA, fighterB, fightId, sch
       fighterAId: fighterA.id,
       fighterBId: fighterB.id,
       fightId,
+      clientId,
       ...text,
       factors,
       morePaths,

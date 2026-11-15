@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { addFight, saveResult } from "@/app/actions/events";
 import { Field } from "@/components/ui";
 import { FormMessage, SubmitButton } from "@/components/ui/client";
-import { RESULT_METHODS, WEIGHT_CLASSES, type DataSource, type Fighter, type FightResult } from "@/lib/domain/types";
+import { RESULT_METHODS, WEIGHT_CLASSES, resultKind, type DataSource, type Fighter, type FightResult } from "@/lib/domain/types";
 import { initialActionState } from "@/lib/utils/form";
 
 export function AddFightForm({ eventId, fighters, nextOrder }: { eventId: string; fighters: Fighter[]; nextOrder: number }) {
@@ -87,7 +87,8 @@ export function ResultForm({
   const [method, setMethod] = useState<string>(existing?.method ?? "");
   const e = state.errors ?? {};
   const rv = (k: string, d: string) => (!state.ok && state.values ? state.values[k] ?? "" : d);
-  const noWinner = method === "Empate" || method === "Sem resultado";
+  // Empate, sem resultado (NC) e resultado anulado não têm vencedor.
+  const noWinner = method !== "" && resultKind(method) !== "win";
   return (
     <form key={state.ts ?? 0} action={action} className="space-y-3">
       <input type="hidden" name="fightId" value={fightId} />

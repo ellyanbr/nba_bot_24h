@@ -4,9 +4,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src"),
+      "@": path.resolve(import.meta.dirname, "src"),
       // Os módulos testados não acessam recursos de servidor; o marcador é neutralizado nos testes.
-      "server-only": path.resolve(__dirname, "tests/unit/server-only-stub.ts"),
+      "server-only": path.resolve(import.meta.dirname, "tests/unit/server-only-stub.ts"),
     },
   },
   test: {

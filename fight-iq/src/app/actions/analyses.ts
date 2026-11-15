@@ -11,6 +11,7 @@ import { ANALYSIS_FACTORS } from "@/lib/domain/catalog";
 import { RESULT_METHODS, type AIOutput, type Bet, type FightAnalysis, type OddsSnapshot, type Prediction } from "@/lib/domain/types";
 import { getFighterProfile } from "@/lib/services/queries";
 import { newId, nowIso } from "@/lib/utils";
+import { oversizedArray } from "@/lib/utils/input-guards";
 
 const EdgeEnum = z.enum(["A", "B", "even", "unknown"]);
 const pct = z.number({ invalid_type_error: "Probabilidade inválida" }).min(0, "Mínimo 0%").max(100, "Máximo 100%");
@@ -21,6 +22,8 @@ const DraftSchema = z.object({
   fighterAId: z.string().min(1),
   fighterBId: z.string().min(1),
   fightId: z.string().nullable(),
+  /** Id gerado no navegador ao abrir a análise: torna o salvamento idempotente (duplo clique, reenvio). */
+  clientId: z.string().uuid("Identificador da análise inválido"),
   title: z.string().max(200),
   factors: z
     .array(
@@ -81,6 +84,8 @@ export interface SaveAnalysisResult {
 }
 
 export async function saveAnalysis(input: AnalysisDraft): Promise<SaveAnalysisResult> {
+  const tooBig = oversizedArray(input, { factors: ANALYSIS_FACTORS.length, odds: 20 });
+  if (tooBig) return { ok: false, message: tooBig };
   const parsed = DraftSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   const d = parsed.data;
@@ -126,7 +131,7 @@ export async function saveAnalysis(input: AnalysisDraft): Promise<SaveAnalysisRe
   const validKeys = new Set(ANALYSIS_FACTORS.map((f) => f.key));
 
   const analysis: FightAnalysis = {
-    id: newId(),
+    id: d.clientId,
     fightId: d.fightId,
     fighterAId: d.fighterAId,
     fighterBId: d.fighterBId,
@@ -146,80 +151,88 @@ export async function saveAnalysis(input: AnalysisDraft): Promise<SaveAnalysisRe
     createdAt: now,
     updatedAt: now,
   };
-  await store.insert("fight_analyses", analysis);
+  // Tudo ou nada: análise, odds, previsão e aposta são gravadas numa única transação.
+  const saved = await store.atomic(async (tx) => {
+    if (await tx.get("fight_analyses", analysis.id)) return false; // já salva (reenvio): não duplica
+    await tx.insert("fight_analyses", analysis);
 
-  const snapshots: OddsSnapshot[] = d.odds.map((o) => ({
-    id: newId(),
-    analysisId: analysis.id,
-    fightId: d.fightId,
-    fighterAId: d.fighterAId,
-    fighterBId: d.fighterBId,
-    bookmaker: o.bookmaker,
-    oddsA: o.oddsA,
-    oddsB: o.oddsB,
-    oddsDraw: o.oddsDraw,
-    capturedAt: new Date(o.capturedAt).toISOString(),
-    containsDemoData: comparison.containsDemo,
-    createdAt: now,
-    updatedAt: now,
-  }));
-  if (snapshots.length) await store.insertMany("odds_snapshots", snapshots);
-
-  if (d.prediction) {
-    const p = d.prediction;
-    const prediction: Prediction = {
+    const snapshots: OddsSnapshot[] = d.odds.map((o) => ({
       id: newId(),
       analysisId: analysis.id,
       fightId: d.fightId,
       fighterAId: d.fighterAId,
       fighterBId: d.fighterBId,
-      pickFighterId: p.pick === "A" ? d.fighterAId : d.fighterBId,
-      method: p.method as Prediction["method"],
-      round: p.round,
-      probabilityA: p.probabilityA,
-      probabilityB: p.probabilityB,
-      probabilityDraw: p.probabilityDraw,
-      confidence: fullProbability,
-      notes: p.notes,
-      status: "pending",
-      resolution: null,
-      winnerCorrect: null,
-      methodCorrect: null,
-      roundCorrect: null,
-      actualWinnerId: null,
-      actualMethod: null,
-      actualRound: null,
-      resolvedAt: null,
+      bookmaker: o.bookmaker,
+      oddsA: o.oddsA,
+      oddsB: o.oddsB,
+      oddsDraw: o.oddsDraw,
+      capturedAt: new Date(o.capturedAt).toISOString(),
       containsDemoData: comparison.containsDemo,
       createdAt: now,
       updatedAt: now,
-    };
-    await store.insert("predictions", prediction);
-    if (p.bet) {
-      const snap = snapshots[p.bet.oddsIndex];
-      const bet: Bet = {
+    }));
+    if (snapshots.length) await tx.insertMany("odds_snapshots", snapshots);
+
+    if (d.prediction) {
+      const p = d.prediction;
+      const prediction: Prediction = {
         id: newId(),
-        predictionId: prediction.id,
-        decimalOdds: p.pick === "A" ? snap.oddsA : snap.oddsB,
-        stake: p.bet.stake,
-        bookmaker: snap.bookmaker,
-        status: "open",
+        analysisId: analysis.id,
+        fightId: d.fightId,
+        fighterAId: d.fighterAId,
+        fighterBId: d.fighterBId,
+        pickFighterId: p.pick === "A" ? d.fighterAId : d.fighterBId,
+        method: p.method as Prediction["method"],
+        round: p.round,
+        probabilityA: p.probabilityA,
+        probabilityB: p.probabilityB,
+        probabilityDraw: p.probabilityDraw,
+        confidence: fullProbability,
+        notes: p.notes,
+        status: "pending",
+        resolution: null,
+        voidReason: null,
+        winnerCorrect: null,
+        methodCorrect: null,
+        roundCorrect: null,
+        actualWinnerId: null,
+        actualMethod: null,
+        actualRound: null,
+        resolvedAt: null,
+        containsDemoData: comparison.containsDemo,
         createdAt: now,
         updatedAt: now,
       };
-      await store.insert("bets", bet);
+      await tx.insert("predictions", prediction);
+      if (p.bet) {
+        const snap = snapshots[p.bet.oddsIndex];
+        const bet: Bet = {
+          id: newId(),
+          predictionId: prediction.id,
+          decimalOdds: p.pick === "A" ? snap.oddsA : snap.oddsB,
+          stake: p.bet.stake,
+          bookmaker: snap.bookmaker,
+          market: snap.oddsDraw != null ? "3way" : "2way",
+          status: "open",
+          createdAt: now,
+          updatedAt: now,
+        };
+        await tx.insert("bets", bet);
+      }
     }
-  }
+    return true;
+  });
   revalidatePath("/", "layout");
-  return { ok: true, message: "Análise salva no histórico.", analysisId: analysis.id };
+  return { ok: true, message: saved ? "Análise salva no histórico." : "Esta análise já estava salva.", analysisId: analysis.id };
 }
 
 export async function deleteAnalysis(id: string) {
-  const store = getStore();
-  const preds = await store.list("predictions", { analysisId: id });
-  for (const p of preds) await store.update("predictions", p.id, { analysisId: null, updatedAt: nowIso() });
-  await store.removeWhere("odds_snapshots", { analysisId: id });
-  await store.remove("fight_analyses", id);
+  await getStore().atomic(async (tx) => {
+    const preds = await tx.list("predictions", { analysisId: id });
+    for (const p of preds) await tx.update("predictions", p.id, { analysisId: null, updatedAt: nowIso() });
+    await tx.removeWhere("odds_snapshots", { analysisId: id });
+    await tx.remove("fight_analyses", id);
+  });
   revalidatePath("/", "layout");
 }
 
@@ -236,6 +249,8 @@ export async function runAIAnalysis(input: {
   fightId: string | null;
   draft: PromptUserDraft | null;
 }): Promise<AIRunResult> {
+  const tooBig = oversizedArray(input.draft, { factors: ANALYSIS_FACTORS.length, odds: 20 });
+  if (tooBig) return { ok: false, message: tooBig };
   const status = getAIStatus();
   const provider = getAIProvider();
   if (!provider) return { ok: false, message: `IA indisponível: ${status.message}` };

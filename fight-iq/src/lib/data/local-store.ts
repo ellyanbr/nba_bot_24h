@@ -2,9 +2,11 @@ import "server-only";
 import { promises as fs } from "fs";
 import path from "path";
 import { TABLES, type TableName } from "@/lib/domain/types";
+import { applyBatchToMemory, type MemoryDb } from "./apply-batch";
 import { matches, type DataStore, type Filter, type Row } from "./store";
+import { BatchTransaction } from "./transaction";
 import { buildDemoDataset } from "./demo-seed";
-import { migratePredictionGrading } from "./local-migrations";
+import { migrateIntegrity, migratePredictionGrading } from "./local-migrations";
 
 type Database = { [K in TableName]: Row<K>[] };
 
@@ -48,7 +50,9 @@ export class LocalJsonStore implements DataStore {
       const db = emptyDb();
       for (const t of TABLES) (db as Record<string, unknown[]>)[t] = parsed[t] ?? [];
       this.cache = db;
-      if (migratePredictionGrading(db)) await this.persist();
+      // Migrações locais (idempotentes); grava o arquivo só se algo mudou.
+      const changed = [migratePredictionGrading(db), migrateIntegrity(db as never)].some(Boolean);
+      if (changed) await this.persist();
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       const db = emptyDb();
@@ -67,14 +71,9 @@ export class LocalJsonStore implements DataStore {
     await fs.rename(tmp, DB_PATH);
   }
 
-  /** Serializa escritas para evitar condições de corrida. */
-  private write<R>(fn: (db: Database) => R): Promise<R> {
-    const run = this.queue.then(async () => {
-      const db = await this.load();
-      const result = fn(db);
-      await this.persist();
-      return result;
-    });
+  /** Fila única: transações locais são executadas uma de cada vez (serializáveis). */
+  private enqueue<R>(job: () => Promise<R>): Promise<R> {
+    const run = this.queue.then(job);
     this.queue = run.catch(() => undefined);
     return run;
   }
@@ -90,42 +89,47 @@ export class LocalJsonStore implements DataStore {
     return row ? { ...row } : null;
   }
 
-  insert<T extends TableName>(table: T, row: Row<T>) {
-    return this.write((db) => {
-      (db[table] as Row<T>[]).push(row);
-      return { ...row };
+  /**
+   * Transação local: lê o estado atual, acumula as escritas, aplica tudo numa cópia
+   * e grava o arquivo uma única vez (escrita em arquivo temporário + rename atômico).
+   * Qualquer erro — na lógica, numa restrição ou na gravação — descarta tudo.
+   */
+  atomic<R>(fn: (tx: DataStore) => Promise<R>): Promise<R> {
+    return this.enqueue(async () => {
+      await this.load();
+      const tx = new BatchTransaction({ list: (t, f) => this.list(t, f), get: (t, id) => this.get(t, id) }, "local");
+      const result = await fn(tx);
+      if (tx.ops.length) {
+        const previous = this.cache!;
+        this.cache = applyBatchToMemory(previous as unknown as MemoryDb, tx.ops) as unknown as Database;
+        try {
+          await this.persist();
+        } catch (err) {
+          this.cache = previous; // rollback em memória: o arquivo não foi substituído
+          throw err;
+        }
+      }
+      return result;
     });
+  }
+
+  insert<T extends TableName>(table: T, row: Row<T>) {
+    return this.atomic((tx) => tx.insert(table, row));
   }
 
   insertMany<T extends TableName>(table: T, rows: Row<T>[]) {
-    return this.write((db) => {
-      (db[table] as Row<T>[]).push(...rows);
-    });
+    return this.atomic((tx) => tx.insertMany(table, rows));
   }
 
   update<T extends TableName>(table: T, id: string, patch: Partial<Row<T>>) {
-    return this.write((db) => {
-      const rows = db[table] as Row<T>[];
-      const idx = rows.findIndex((r) => (r as { id: string }).id === id);
-      if (idx < 0) throw new Error(`Registro não encontrado: ${table}/${id}`);
-      rows[idx] = { ...rows[idx], ...patch, id } as Row<T>;
-      return { ...rows[idx] };
-    });
+    return this.atomic((tx) => tx.update(table, id, patch));
   }
 
   remove<T extends TableName>(table: T, id: string) {
-    return this.write((db) => {
-      (db as Record<string, unknown[]>)[table] = (db[table] as Row<T>[]).filter(
-        (r) => (r as { id: string }).id !== id,
-      );
-    });
+    return this.atomic((tx) => tx.remove(table, id));
   }
 
   removeWhere<T extends TableName>(table: T, filter: Filter<T>) {
-    return this.write((db) => {
-      (db as Record<string, unknown[]>)[table] = (db[table] as Row<T>[]).filter(
-        (r) => !matches(r, filter),
-      );
-    });
+    return this.atomic((tx) => tx.removeWhere(table, filter));
   }
 }

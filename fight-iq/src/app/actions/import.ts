@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { getStore } from "@/lib/data";
 import { STAT_CATALOG } from "@/lib/domain/catalog";
+import { eventHasStarted } from "@/lib/domain/event-dates";
 import { CSV_MAX_BYTES } from "@/lib/domain/limits";
-import { RESULT_METHODS, type Fight, type FightEvent, type FightResult, type Fighter, type FighterStatistic, type ResultMethod } from "@/lib/domain/types";
+import { RESULT_METHODS, resultKind, type Fight, type FightEvent, type FightResult, type Fighter, type FighterStatistic, type ResultMethod } from "@/lib/domain/types";
 import { newId, nowIso } from "@/lib/utils";
 import { parseCsv } from "@/lib/utils/csv";
 import { keepValues, str } from "@/lib/utils/form";
@@ -118,8 +119,10 @@ async function importCsvImpl(_prev: ImportState, fd: FormData): Promise<ImportSt
       }
     });
     if (errors.length) return { ok: false, message: "Nenhum registro importado. Corrija os erros:", errors, skipped };
-    await store.insertMany("fighters", fighters);
-    await store.insertMany("fighter_statistics", stats);
+    await store.atomic(async (tx) => {
+      await tx.insertMany("fighters", fighters);
+      await tx.insertMany("fighter_statistics", stats);
+    });
     revalidatePath("/", "layout");
     return { ok: true, message: `${fighters.length} atleta(s) e ${stats.length} estatística(s) importados.`, imported: fighters.length, skipped };
   }
@@ -135,13 +138,14 @@ async function importCsvImpl(_prev: ImportState, fd: FormData): Promise<ImportSt
       if (!DATE.test(r.date ?? "")) return errors.push(`Linha ${line}: date deve estar no formato AAAA-MM-DD.`);
       const status = (r.status || "scheduled") as FightEvent["status"];
       if (!["scheduled", "completed", "cancelled"].includes(status)) return errors.push(`Linha ${line}: status inválido (scheduled, completed ou cancelled).`);
+      if (status === "completed" && !eventHasStarted(r.date)) return errors.push(`Linha ${line}: evento com data futura não pode estar como "completed".`);
       const key = `${norm(r.name)}|${r.date}`;
       if (existing.has(key)) return skipped.push(`Linha ${line}: "${r.name}" (${r.date}) já existe.`);
       existing.add(key);
       events.push({ id: newId(), organizationId, name: r.name, date: r.date, venue: r.venue || null, city: r.city || null, country: r.country || null, status, ...base });
     });
     if (errors.length) return { ok: false, message: "Nenhum registro importado. Corrija os erros:", errors, skipped };
-    await store.insertMany("events", events);
+    await store.atomic((tx) => tx.insertMany("events", events));
     revalidatePath("/", "layout");
     return { ok: true, message: `${events.length} evento(s) importado(s).`, imported: events.length, skipped };
   }
@@ -182,7 +186,8 @@ async function importCsvImpl(_prev: ImportState, fd: FormData): Promise<ImportSt
     });
     if (hasResult) {
       if (!RESULT_METHODS.includes(r.method as ResultMethod)) return errors.push(`Linha ${line}: method inválido. Use: ${RESULT_METHODS.join(", ")}.`);
-      const noWinner = r.method === "Empate" || r.method === "Sem resultado";
+      if (!eventHasStarted(ev.date)) return errors.push(`Linha ${line}: o evento é em ${ev.date}; não é possível registrar resultado antes da data do evento.`);
+      const noWinner = resultKind(r.method) !== "win";
       let winnerId: string | null = null;
       if (!noWinner) {
         const w = norm(r.winner ?? "");
@@ -198,8 +203,10 @@ async function importCsvImpl(_prev: ImportState, fd: FormData): Promise<ImportSt
     }
   });
   if (errors.length) return { ok: false, message: "Nenhum registro importado. Corrija os erros:", errors };
-  await store.insertMany("fights", fights);
-  await store.insertMany("fight_results", results);
+  await store.atomic(async (tx) => {
+    await tx.insertMany("fights", fights);
+    await tx.insertMany("fight_results", results);
+  });
   revalidatePath("/", "layout");
   return { ok: true, message: `${fights.length} luta(s) e ${results.length} resultado(s) importados.`, imported: fights.length };
 }

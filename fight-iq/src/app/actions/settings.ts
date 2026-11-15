@@ -22,12 +22,15 @@ export async function loadDemoData(): Promise<ActionState> {
     return { ok: false, message: "Os dados de demonstração já estão carregados." };
   }
   const demo = buildDemoDataset();
-  for (const t of TABLES) {
-    const rows = (demo[t] ?? []) as never[];
-    const existing = new Set((await store.list(t)).map((r) => (r as { id: string }).id));
-    const fresh = rows.filter((r) => !existing.has((r as { id: string }).id));
-    if (fresh.length) await store.insertMany(t, fresh);
-  }
+  // Uma transação: ou todos os dados de demonstração entram, ou nenhum (ordem compatível com as FKs).
+  await store.atomic(async (tx) => {
+    for (const t of TABLES) {
+      const rows = (demo[t] ?? []) as never[];
+      const existing = new Set((await tx.list(t)).map((r) => (r as { id: string }).id));
+      const fresh = rows.filter((r) => !existing.has((r as { id: string }).id));
+      if (fresh.length) await tx.insertMany(t, fresh);
+    }
+  });
   revalidatePath("/", "layout");
   return { ok: true, message: "Dados de demonstração carregados." };
 }
@@ -35,16 +38,18 @@ export async function loadDemoData(): Promise<ActionState> {
 /** Remove TODOS os registros de demonstração, inclusive análises e previsões que os utilizam. */
 export async function removeDemoData(): Promise<ActionState> {
   const store = getStore();
-  const demoAnalyses = await store.list("fight_analyses", { containsDemoData: true });
-  const demoPreds = await store.list("predictions", { containsDemoData: true });
-  for (const p of demoPreds) {
-    await store.removeWhere("bets", { predictionId: p.id });
-    await store.remove("predictions", p.id);
-  }
-  await store.removeWhere("odds_snapshots", { containsDemoData: true });
-  for (const a of demoAnalyses) await store.remove("fight_analyses", a.id);
-  const order: TableName[] = ["fight_results", "fights", "fighter_statistics", "events", "fighters", "organizations", "data_sources"];
-  for (const t of order) await store.removeWhere(t, { isDemo: true } as never);
+  await store.atomic(async (tx) => {
+    const demoAnalyses = await tx.list("fight_analyses", { containsDemoData: true });
+    const demoPreds = await tx.list("predictions", { containsDemoData: true });
+    for (const p of demoPreds) {
+      await tx.removeWhere("bets", { predictionId: p.id });
+      await tx.remove("predictions", p.id);
+    }
+    await tx.removeWhere("odds_snapshots", { containsDemoData: true });
+    for (const a of demoAnalyses) await tx.remove("fight_analyses", a.id);
+    const order: TableName[] = ["fight_results", "fights", "fighter_statistics", "events", "fighters", "organizations", "data_sources"];
+    for (const t of order) await tx.removeWhere(t, { isDemo: true } as never);
+  });
   revalidatePath("/", "layout");
   return { ok: true, message: "Dados de demonstração removidos." };
 }

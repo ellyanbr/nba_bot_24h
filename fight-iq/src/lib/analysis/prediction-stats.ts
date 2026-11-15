@@ -54,7 +54,11 @@ export function pickProbability(p: Prediction): number {
 
 /** Resultado oficial em termos de lado (A, B, empate); null se não houver resultado oficial aplicável. */
 export function outcomeSide(p: Prediction): Side | null {
-  if (p.resolution !== "auto" || p.status === "void") return null;
+  if (p.resolution !== "auto") return null;
+  // Empate é um resultado real: a previsão é anulada para acerto/erro, mas a estimativa
+  // de probabilidades (que inclui o empate) continua avaliável pelo Brier/log loss.
+  if (p.voidReason === "draw" || (p.actualMethod === "Empate" && p.status === "void")) return "draw";
+  if (p.status === "void") return null;
   if (p.actualWinnerId === p.fighterAId) return "A";
   if (p.actualWinnerId === p.fighterBId) return "B";
   if (p.actualMethod === "Empate") return "draw";
