@@ -16,7 +16,7 @@ export function StatForm({ fighterId, sources, isDemo }: { fighterId: string; so
   return (
     <form key={state.ts ?? 0} action={action} className="space-y-3">
       <input type="hidden" name="fighterId" value={fighterId} />
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Estatística" error={e.statKey}>
           <select name="statKey" defaultValue={sv("statKey")} className="field-input">
             {STAT_CATALOG.map((s) => (

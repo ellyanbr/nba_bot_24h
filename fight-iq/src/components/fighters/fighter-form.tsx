@@ -19,7 +19,7 @@ export function FighterForm({ fighter, organizations, sources }: { fighter?: Fig
 
       <Card>
         <CardHeader title="Identificação" />
-        <CardBody className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Nome" required error={e.name}>
             <input name="name" defaultValue={v("name")} className="field-input" />
           </Field>
@@ -51,7 +51,7 @@ export function FighterForm({ fighter, organizations, sources }: { fighter?: Fig
 
       <Card>
         <CardHeader title="Físico e estilo" />
-        <CardBody className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Categoria" error={e.weightClass}>
             <select name="weightClass" defaultValue={v("weightClass")} className="field-input">
               <option value="">—</option>
@@ -100,7 +100,7 @@ export function FighterForm({ fighter, organizations, sources }: { fighter?: Fig
 
       <Card>
         <CardHeader title="Procedência" subtitle="Obrigatório. Dados sem fonte não são aceitos." />
-        <CardBody className="grid gap-4 sm:grid-cols-2">
+        <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Fonte dos dados" required error={e.sourceId} hint="Cadastre novas fontes em Fontes de dados.">
             <select name="sourceId" defaultValue={v("sourceId")} className="field-input">
               <option value="">— Selecione —</option>

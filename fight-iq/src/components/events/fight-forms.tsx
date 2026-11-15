@@ -19,7 +19,7 @@ export function AddFightForm({ eventId, fighters, nextOrder }: { eventId: string
   return (
     <form key={state.ts ?? 0} action={action} className="space-y-4">
       <input type="hidden" name="eventId" value={eventId} />
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Córner vermelho" required error={e.redFighterId}>
           <select name="redFighterId" className="field-input" defaultValue={fv("redFighterId")}>
             <option value="">— Selecione —</option>
@@ -91,7 +91,7 @@ export function ResultForm({
   return (
     <form key={state.ts ?? 0} action={action} className="space-y-3">
       <input type="hidden" name="fightId" value={fightId} />
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="Método" required error={e.method}>
           <select name="method" value={method} onChange={(ev) => setMethod(ev.target.value)} className="field-input">
             <option value="">— Selecione —</option>

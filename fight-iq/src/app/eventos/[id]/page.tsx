@@ -58,7 +58,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </div>
       </Card>
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">
           <h2 className="text-xs font-semibold tracking-[0.2em] text-ink-400 uppercase">Card de lutas ({fights.length})</h2>
           {fights.length === 0 && <EmptyState title="Nenhuma luta neste card." description="Adicione lutas no formulário ao lado." />}
@@ -81,7 +81,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
                     <Badge tone={st.tone}>{st.label}</Badge>
                   </span>
                 </div>
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 py-4">
                   {[red, blue].map((f, idx) => {
                     const won = result?.winnerId === f.id;
                     const lost = result && result.winnerId && result.winnerId !== f.id;

@@ -30,7 +30,7 @@ export default async function ImportPage() {
           <ImportForm organizations={realOrgs} sources={realSources} />
         </CardBody>
       </Card>
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {Object.entries(CSV_TEMPLATES).map(([key, t]) => (
           <Card key={key}>
             <CardHeader title={key === "fighters" ? "Colunas — Lutadores" : key === "events" ? "Colunas — Eventos" : "Colunas — Lutas"} subtitle={t.filename} />

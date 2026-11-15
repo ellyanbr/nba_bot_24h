@@ -195,7 +195,7 @@ export function AnalyzerWorkspace({ comparison, fighterA, fighterB, fightId, sch
                         ) : (
                           <p className="mt-3 text-xs text-amber-200/80">Não há dados estruturados para este fator. Se avaliar, registre a fonte nas notas e marque como interpretação quando aplicável.</p>
                         )}
-                        <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,240px)_170px_1fr]">
+                        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,240px)_170px_1fr]">
                           <select aria-label={`Vantagem em ${f.label}`} value={fa.edge} onChange={(e) => setFactor(f.key, { edge: e.target.value as Edge })} className="field-input">
                             <option value="unknown">Vantagem: sem avaliação</option>
                             <option value="A">Vantagem: {fighterA.name}</option>
@@ -220,7 +220,7 @@ export function AnalyzerWorkspace({ comparison, fighterA, fighterB, fightId, sch
       {/* CAMINHOS / ARGUMENTOS */}
       <Card>
         <CardHeader title="Caminhos para vitória e contrapontos" subtitle="Construa os dois lados — o objetivo é reduzir o viés." />
-        <CardBody className="grid gap-4 md:grid-cols-2">
+        <CardBody className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {ta("pathsToVictoryA", `O que ${fighterA.name} precisa fazer para vencer`, "Ex.: manter distância com o jab, punir entradas de queda…", "red")}
           {ta("pathsToVictoryB", `O que ${fighterB.name} precisa fazer para vencer`, "Ex.: pressionar contra a grade, encadear quedas…", "blue")}
           {ta("argumentsA", `Argumentos a favor de ${fighterA.name}`, "Pontos objetivos que sustentam A", "red")}
@@ -255,7 +255,7 @@ export function AnalyzerWorkspace({ comparison, fighterA, fighterB, fightId, sch
           }
         />
         {withPrediction && (
-          <CardBody className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Vencedor previsto">
               <select value={pred.pick} onChange={(e) => setPred((p) => ({ ...p, pick: e.target.value as "A" | "B" }))} className="field-input">
                 <option value="A">{fighterA.name}</option>

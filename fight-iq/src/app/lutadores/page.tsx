@@ -28,7 +28,7 @@ export default async function FightersPage({ searchParams }: { searchParams: Pro
       />
 
       <Card className="mb-6 p-4">
-        <form method="get" className="grid gap-3 sm:grid-cols-[1fr_200px_200px_auto]">
+        <form method="get" className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_200px_200px_auto]">
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-ink-400" />
             <input name="q" defaultValue={sp.q} placeholder="Pesquisar por nome, apelido ou equipe" className="field-input pl-9" />
@@ -62,7 +62,7 @@ export default async function FightersPage({ searchParams }: { searchParams: Pro
 
       <p className="mb-3 text-xs text-ink-400">{fighters.length} atleta(s)</p>
       {fighters.length ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {fighters.map((f) => (
             <FighterCard key={f.id} fighter={f} organization={f.organization} />
           ))}

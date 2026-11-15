@@ -16,7 +16,7 @@ export function EventForm({ event, organizations, sources }: { event?: FightEven
       {event && <input type="hidden" name="id" value={event.id} />}
       <FormMessage state={state} />
       <Card>
-        <CardBody className="grid gap-4 sm:grid-cols-2">
+        <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Nome do evento" required error={e.name} className="sm:col-span-2">
             <input name="name" defaultValue={ev("name") || ""} className="field-input" />
           </Field>

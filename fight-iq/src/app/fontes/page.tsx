@@ -15,7 +15,7 @@ export default async function SourcesPage() {
   return (
     <>
       <PageHeader eyebrow="Procedência" title="Fontes de dados e organizações" description="Toda informação estatística importante aponta para uma fonte com data de consulta." />
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className="space-y-6 lg:col-span-3">
           <Card>
             <CardHeader title={`Fontes (${sources.length})`} />

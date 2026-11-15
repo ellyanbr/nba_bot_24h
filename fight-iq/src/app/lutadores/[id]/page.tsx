@@ -84,7 +84,7 @@ export default async function FighterProfilePage({ params }: { params: Promise<{
         </div>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-1">
           <Card>
             <CardHeader title="Dados do atleta" />
@@ -120,7 +120,7 @@ export default async function FighterProfilePage({ params }: { params: Promise<{
             <CardHeader title="Estatísticas" subtitle="Cada valor exibe sua fonte e data de atualização" />
             <CardBody>
               {stats.length ? (
-                <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
                   {STAT_CATALOG.map((def) => {
                     const s = stats.find((x) => x.statKey === def.key);
                     return (

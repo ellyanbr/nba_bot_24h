@@ -18,7 +18,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader eyebrow="Desempenho" title="Histórico" description="Análises realizadas, previsões registradas e comparação com os resultados reais." />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="Análises" value={analyses.length} icon={<FileText className="h-4 w-4" />} />
         <StatTile label="Previsões" value={stats.total} hint={`${stats.pending} pendente(s)`} icon={<Target className="h-4 w-4" />} />
         <StatTile label="Taxa de acerto" value={stats.accuracy == null ? "—" : `${stats.accuracy.toFixed(0)}%`} hint={`Previsão completa · ${stats.correct}/${stats.resolved}${stats.manualResolved ? ` (${stats.manualResolved} manual)` : ""}`} accent />
@@ -29,7 +29,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
         <CardHeader title="Calibração" subtitle="Sua taxa de acerto por faixa de confiança. Bem calibrado = acerto próximo da confiança declarada." />
         <CardBody className="flex flex-col gap-8 md:flex-row md:items-center">
           <RingGauge value={stats.accuracy} label="acerto" />
-          <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {stats.buckets.map((b) => (
               <div key={b.label}>
                 <div className="flex items-baseline justify-between text-xs">
@@ -73,7 +73,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
           </p>
         </Card>
       ) : analyses.length ? (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {analyses.map((a) => (
             <Link key={a.id} href={`/historico/analises/${a.id}`} className="rounded-xl border border-ink-700 bg-ink-850/80 p-4 transition hover:border-blood-600/50">
               <div className="flex items-start justify-between gap-2">

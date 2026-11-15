@@ -57,7 +57,7 @@ export default async function DashboardPage() {
         <StatTile label="Taxa de acerto" value={s.accuracy == null ? "—" : `${s.accuracy.toFixed(0)}%`} hint={`${s.resolved} previsão(ões) resolvida(s)`} icon={<Target className="h-4 w-4" />} accent />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
           <Card>
             <CardHeader
@@ -87,7 +87,7 @@ export default async function DashboardPage() {
             />
             <CardBody>
               {d.featured.length ? (
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {d.featured.map((f) => (
                     <FighterCard key={f.id} fighter={f} organization={f.organization} />
                   ))}

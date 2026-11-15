@@ -18,7 +18,7 @@ export function SourceForm() {
       <Field label="Nome da fonte" required error={e.name}>
         <input name="name" defaultValue={keep(state, "name")} placeholder="Ex.: Site oficial da organização" className="field-input" />
       </Field>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Tipo" error={e.kind}>
           <select name="kind" className="field-input" defaultValue={keep(state, "kind", "official_site")}>
             <option value="official_site">Site oficial</option>
@@ -51,7 +51,7 @@ export function OrganizationForm({ sources }: { sources: DataSource[] }) {
   const e = state.errors ?? {};
   return (
     <form key={state.ts ?? 0} action={action} className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Nome" required error={e.name}>
           <input name="name" defaultValue={keep(state, "name")} className="field-input" />
         </Field>

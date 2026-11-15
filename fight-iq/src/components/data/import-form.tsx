@@ -11,7 +11,7 @@ export function ImportForm({ organizations, sources }: { organizations: Organiza
   const [kind, setKind] = useState("fighters");
   return (
     <form key={state.ts ?? 0} action={action} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field label="Tipo de dado" required>
           <select name="kind" value={kind} onChange={(e) => setKind(e.target.value)} className="field-input">
             <option value="fighters">Lutadores (+ estatísticas)</option>

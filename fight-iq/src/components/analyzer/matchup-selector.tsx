@@ -73,7 +73,7 @@ export function MatchupSelector({ fighters, fights, a, b, fightId }: { fighters:
           </select>
         </label>
       )}
-      <div className="grid items-end gap-3 md:grid-cols-[1fr_auto_1fr_auto]">
+      <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-[1fr_auto_1fr_auto]">
         <label className="block">
           <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-ink-300">
             <span className="h-2 w-2 rounded-full bg-blood-500" /> Atleta A

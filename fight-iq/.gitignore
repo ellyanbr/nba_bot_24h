@@ -44,3 +44,7 @@ next-env.d.ts
 /data/*.json
 /data/*.tmp
 !.env.example
+
+# testes
+/test-results
+/playwright-report

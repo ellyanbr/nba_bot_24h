@@ -20,7 +20,7 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader eyebrow="Sistema" title="Configurações" description="Armazenamento, motor de IA e dados de demonstração. Todas as opções são gratuitas." />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title="Dados de demonstração" icon={<FlaskConical className="h-4 w-4" />} />
           <CardBody className="space-y-4 text-sm text-ink-300">
@@ -69,7 +69,7 @@ export default async function SettingsPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader title="Motor de inteligência artificial" icon={<Bot className="h-4 w-4" />} action={<Badge tone={ai.configured ? "green" : "amber"}>{ai.configured ? `${ai.label} · ${ai.model}` : "Não configurado"}</Badge>} />
-          <CardBody className="grid gap-6 text-sm text-ink-300 lg:grid-cols-3">
+          <CardBody className="grid grid-cols-1 gap-6 text-sm text-ink-300 lg:grid-cols-3">
             <div className="space-y-2">
               <p className="font-semibold text-white">Situação atual</p>
               <p>{ai.message}</p>

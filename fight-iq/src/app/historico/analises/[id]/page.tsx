@@ -57,7 +57,7 @@ export default async function AnalysisDetailPage({ params }: { params: Promise<{
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardHeader title="Conclusão" />
@@ -69,7 +69,7 @@ export default async function AnalysisDetailPage({ params }: { params: Promise<{
             </CardBody>
           </Card>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {block(`Caminhos — ${nameA}`, a.pathsToVictoryA, "red")}
             {block(`Caminhos — ${nameB}`, a.pathsToVictoryB, "blue")}
             {block(`Argumentos — ${nameA}`, a.argumentsA, "red")}
