@@ -36,9 +36,9 @@ export function EventCard({ detail, compact }: { detail: EventDetail; compact?: 
         )}
         {!compact && (
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-400">
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
-              {[event.venue, event.city, event.country].filter(Boolean).join(", ") || "Local não informado"}
+            <span className="flex min-w-0 max-w-full items-center gap-1">
+              <MapPin className="h-3 w-3 shrink-0" />
+              <span className="truncate">{[event.venue, event.city, event.country].filter(Boolean).join(", ") || "Local não informado"}</span>
             </span>
             <span className="flex items-center gap-1">
               <CalendarDays className="h-3 w-3" />

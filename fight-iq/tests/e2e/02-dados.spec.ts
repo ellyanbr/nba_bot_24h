@@ -107,3 +107,46 @@ test("importação CSV: rejeição atômica, atletas, eventos e lutas com result
   await expect(row).toContainText("Decisão unânime");
   await expect(row).toContainText("R3");
 });
+
+test("B3: CSV entre 1 e 2 MB é importado; acima de 2 MB é recusado com mensagem clara", async ({ page }) => {
+  const src = `Fonte ${uid()}`;
+  await createSource(page, src);
+  const k = uid();
+  // Linhas largas (coluna venue com ~1 KB) para atingir o tamanho com ~1.400 registros.
+  let csv = "name,date,status,venue\n";
+  let i = 0;
+  while (Buffer.byteLength(csv) < 1.4 * 1024 * 1024) csv += `Evento Grande ${k} ${i++},2027-01-01,scheduled,${"x".repeat(1000)}\n`;
+  await importCsv(page, "events", src, csv, `${i} evento(s) importado(s).`);
+
+  while (Buffer.byteLength(csv) < 2.3 * 1024 * 1024) csv += `Evento Grande ${k} ${i++},2027-01-01,scheduled,${"x".repeat(1000)}\n`;
+  await importCsv(page, "events", src, csv, /O limite é 2 MB/);
+});
+
+test("B4: não permite misturar demonstração e dados reais no cadastro e na edição", async ({ page }) => {
+  const src = `Fonte ${uid()}`;
+  await createSource(page, src);
+
+  // Fonte real + organização de demonstração
+  await page.goto("/lutadores/novo");
+  await page.fill('input[name="name"]', `Misto ${uid()}`);
+  await page.selectOption('select[name="organizationId"]', "demo-org");
+  await page.selectOption('select[name="sourceId"]', { label: src });
+  await page.getByRole("button", { name: "Cadastrar atleta" }).click();
+  await expect(page.getByText("Organização e fonte devem ser ambas de demonstração ou ambas reais.")).toBeVisible();
+
+  // Atleta real com estatística: não pode virar demonstração na edição
+  const id = await createFighter(page, `Real ${uid()}`, src);
+  await page.getByText("Adicionar / atualizar estatística").click();
+  const statForm = page.locator("form", { has: page.locator('select[name="statKey"]') });
+  await statForm.locator('input[name="value"]').fill("4");
+  await statForm.locator('input[name="asOf"]').fill("2026-11-01");
+  await statForm.locator('select[name="sourceId"]').selectOption({ label: src });
+  await statForm.getByRole("button", { name: "Salvar estatística" }).click();
+  await expect(page.getByText("SLpM salvo.")).toBeVisible();
+
+  await page.goto(`/lutadores/${id}/editar`);
+  await page.selectOption('select[name="organizationId"]', "");
+  await page.selectOption('select[name="sourceId"]', "demo-source");
+  await page.getByRole("button", { name: "Salvar alterações" }).click();
+  await expect(page.getByText(/já tem 1 estatística/)).toBeVisible();
+});

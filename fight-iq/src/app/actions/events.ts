@@ -50,6 +50,11 @@ async function saveEventImpl(_prev: ActionState, fd: FormData): Promise<ActionSt
   const now = nowIso();
   let savedId = id;
   if (id) {
+    const existing = await store.get("events", id);
+    if (!existing) return { ok: false, message: "Evento não encontrado." };
+    if (existing.isDemo !== source.isDemo && (await store.list("fights", { eventId: id })).length) {
+      return { ok: false, errors: { sourceId: "Não é possível trocar entre demonstração e dados reais: o evento já tem lutas cadastradas." } };
+    }
     await store.update("events", id, { ...parsed.data, isDemo: source.isDemo, updatedAt: now });
   } else {
     const ev: FightEvent = { id: newId(), ...parsed.data, isDemo: source.isDemo, createdAt: now, updatedAt: now };

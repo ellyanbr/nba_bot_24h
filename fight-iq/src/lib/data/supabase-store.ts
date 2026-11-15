@@ -11,6 +11,9 @@ function mapKeys(obj: unknown, fn: (k: string) => string): Record<string, unknow
 }
 const fromDb = <R,>(row: unknown) => mapKeys(row, toCamel) as unknown as R;
 
+/** Tamanho de página: não pode exceder o "Max rows" da API do projeto Supabase (padrão 1000). */
+export const PAGE_SIZE = 1000;
+
 /**
  * Adaptador Supabase (PostgreSQL). Opcional — ativado com DATA_BACKEND=supabase.
  * Executa somente no servidor, com a service role key lida de variável de ambiente
@@ -20,26 +23,34 @@ export class SupabaseStore implements DataStore {
   readonly backend = "supabase" as const;
   private client: SupabaseClient;
 
-  constructor(url: string, serviceKey: string) {
-    this.client = createClient(url, serviceKey, { auth: { persistSession: false } });
+  constructor(url: string, serviceKey: string, client?: SupabaseClient) {
+    this.client = client ?? createClient(url, serviceKey, { auth: { persistSession: false } });
   }
 
   private fail(op: string, table: string, error: { message: string } | null): never {
     throw new Error(`Supabase ${op} em ${table}: ${error?.message ?? "erro desconhecido"}`);
   }
 
+  /**
+   * Lê TODAS as linhas, em páginas. O PostgREST/Supabase limita cada resposta
+   * (padrão de 1000 linhas); sem paginar, tabelas grandes seriam cortadas sem aviso.
+   * A ordenação por id garante páginas estáveis.
+   */
   async list<T extends TableName>(table: T, filter?: Filter<T>) {
-    let q = this.client.from(table).select("*");
-    if (filter) {
-      const f = mapKeys(
-        Object.fromEntries(Object.entries(filter).filter(([, v]) => v !== undefined)),
-        toSnake,
-      );
+    const f = filter
+      ? mapKeys(Object.fromEntries(Object.entries(filter).filter(([, v]) => v !== undefined)), toSnake)
+      : {};
+    const rows: Row<T>[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      let q = this.client.from(table).select("*");
       if (Object.keys(f).length) q = q.match(f);
+      const { data, error } = await q.order("id", { ascending: true }).range(from, from + PAGE_SIZE - 1);
+      if (error) this.fail("list", table, error);
+      const page = data ?? [];
+      rows.push(...page.map((r) => fromDb<Row<T>>(r)));
+      if (page.length < PAGE_SIZE) break;
     }
-    const { data, error } = await q;
-    if (error) this.fail("list", table, error);
-    return (data ?? []).map((r) => fromDb<Row<T>>(r));
+    return rows;
   }
 
   async get<T extends TableName>(table: T, id: string) {

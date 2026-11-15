@@ -74,11 +74,25 @@ async function saveFighterImpl(_prev: ActionState, fd: FormData): Promise<Action
   const store = getStore();
   const source = await store.get("data_sources", parsed.data.sourceId);
   if (!source) return { ok: false, errors: { sourceId: "Fonte não encontrada" } };
+  if (parsed.data.organizationId) {
+    const org = await store.get("organizations", parsed.data.organizationId);
+    if (!org) return { ok: false, errors: { organizationId: "Organização não encontrada" } };
+    if (org.isDemo !== source.isDemo) {
+      return { ok: false, errors: { sourceId: "Organização e fonte devem ser ambas de demonstração ou ambas reais." } };
+    }
+  }
   const now = nowIso();
   let savedId = id;
   if (id) {
     const existing = await store.get("fighters", id);
     if (!existing) return { ok: false, message: "Atleta não encontrado." };
+    if (existing.isDemo !== source.isDemo) {
+      // Mudar a natureza (demo ↔ real) deixaria estatísticas, lutas e análises misturadas.
+      const linked = await fighterLinks(id);
+      if (linked) {
+        return { ok: false, errors: { sourceId: `Não é possível trocar entre fonte de demonstração e fonte real: o atleta já tem ${linked}.` } };
+      }
+    }
     await store.update("fighters", id, { ...parsed.data, isDemo: source.isDemo, updatedAt: now });
   } else {
     const fighter: Fighter = { id: newId(), ...parsed.data, isDemo: source.isDemo, createdAt: now, updatedAt: now };
@@ -87,6 +101,25 @@ async function saveFighterImpl(_prev: ActionState, fd: FormData): Promise<Action
   }
   revalidatePath("/", "layout");
   redirect(`/lutadores/${savedId}`);
+}
+
+/** Descreve registros vinculados ao atleta (ou null se não houver). */
+async function fighterLinks(id: string): Promise<string | null> {
+  const store = getStore();
+  const [stats, red, blue, analyses, preds] = await Promise.all([
+    store.list("fighter_statistics", { fighterId: id }),
+    store.list("fights", { redFighterId: id }),
+    store.list("fights", { blueFighterId: id }),
+    store.list("fight_analyses"),
+    store.list("predictions"),
+  ]);
+  const parts: string[] = [];
+  if (stats.length) parts.push(`${stats.length} estatística(s)`);
+  if (red.length + blue.length) parts.push(`${red.length + blue.length} luta(s)`);
+  const nA = analyses.filter((a) => a.fighterAId === id || a.fighterBId === id).length;
+  const nP = preds.filter((p) => p.fighterAId === id || p.fighterBId === id).length;
+  if (nA + nP) parts.push(`${nA + nP} análise(s)/previsão(ões)`);
+  return parts.length ? parts.join(", ") : null;
 }
 
 export async function deleteFighter(id: string): Promise<ActionState> {

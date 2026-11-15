@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getStore } from "@/lib/data";
 import { STAT_CATALOG } from "@/lib/domain/catalog";
+import { CSV_MAX_BYTES } from "@/lib/domain/limits";
 import { RESULT_METHODS, type Fight, type FightEvent, type FightResult, type Fighter, type FighterStatistic, type ResultMethod } from "@/lib/domain/types";
 import { newId, nowIso } from "@/lib/utils";
 import { parseCsv } from "@/lib/utils/csv";
@@ -18,7 +19,6 @@ export interface ImportState {
   skipped?: string[];
 }
 
-const MAX_BYTES = 2 * 1024 * 1024;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const STANCES = ["Ortodoxo", "Canhoto", "Trocador de base", "Outro"];
 
@@ -43,7 +43,7 @@ async function importCsvImpl(_prev: ImportState, fd: FormData): Promise<ImportSt
   if (!organizationId) return { ok: false, message: "Selecione a organização." };
   if (!sourceId) return { ok: false, message: "Selecione a fonte dos dados — toda importação precisa de procedência." };
   if (!(file instanceof File) || file.size === 0) return { ok: false, message: "Selecione um arquivo CSV." };
-  if (file.size > MAX_BYTES) return { ok: false, message: "Arquivo maior que 2 MB." };
+  if (file.size > CSV_MAX_BYTES) return { ok: false, message: "Arquivo maior que 2 MB." };
 
   const store = getStore();
   const [org, source] = await Promise.all([store.get("organizations", organizationId), store.get("data_sources", sourceId)]);

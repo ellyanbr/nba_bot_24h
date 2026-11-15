@@ -264,9 +264,14 @@ export interface TableMap {
   bets: Bet;
 }
 export type TableName = keyof TableMap;
+/**
+ * Todas as tabelas, em ordem compatível com as chaves estrangeiras
+ * (cada tabela vem depois das que ela referencia). Use esta ordem para inserir;
+ * para excluir, use a ordem inversa.
+ */
 export const TABLES: TableName[] = [
-  "organizations",
   "data_sources",
+  "organizations",
   "fighters",
   "fighter_statistics",
   "events",

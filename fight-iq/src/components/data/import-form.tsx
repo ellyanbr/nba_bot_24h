@@ -4,13 +4,27 @@ import { useActionState, useState } from "react";
 import { importCsv, type ImportState } from "@/app/actions/import";
 import { Field } from "@/components/ui";
 import { SubmitButton } from "@/components/ui/client";
+import { CSV_MAX_BYTES } from "@/lib/domain/limits";
 import type { DataSource, Organization } from "@/lib/domain/types";
 
 export function ImportForm({ organizations, sources }: { organizations: Organization[]; sources: DataSource[] }) {
   const [state, action] = useActionState<ImportState, FormData>(importCsv, { ok: false });
   const [kind, setKind] = useState("fighters");
+  const [sizeError, setSizeError] = useState<string | null>(null);
   return (
-    <form key={state.ts ?? 0} action={action} className="space-y-4">
+    <form
+      key={state.ts ?? 0}
+      action={action}
+      onSubmit={(e) => {
+        // Valida o tamanho antes do envio: arquivos acima do limite nem chegam ao servidor.
+        const file = (e.currentTarget.elements.namedItem("file") as HTMLInputElement | null)?.files?.[0];
+        if (file && file.size > CSV_MAX_BYTES) {
+          e.preventDefault();
+          setSizeError(`Arquivo com ${(file.size / 1024 / 1024).toFixed(1)} MB. O limite é ${CSV_MAX_BYTES / 1024 / 1024} MB — divida o arquivo em partes.`);
+        } else setSizeError(null);
+      }}
+      className="space-y-4"
+    >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field label="Tipo de dado" required>
           <select name="kind" value={kind} onChange={(e) => setKind(e.target.value)} className="field-input">
@@ -49,6 +63,7 @@ export function ImportForm({ organizations, sources }: { organizations: Organiza
         </a>
         <SubmitButton pendingText="Importando…">Validar e importar</SubmitButton>
       </div>
+      {sizeError && <p className="rounded-md border border-blood-600/50 bg-blood-600/10 px-3 py-2 text-sm text-blood-300">{sizeError}</p>}
       {state.message && (
         <div className={`rounded-md border px-3 py-2 text-sm ${state.ok ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-blood-600/50 bg-blood-600/10 text-blood-300"}`}>
           <p className="font-medium">{state.message}</p>
