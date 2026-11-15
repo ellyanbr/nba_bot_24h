@@ -242,7 +242,17 @@ export function AnalyzerWorkspace({ comparison, fighterA, fighterB, fightId, sch
                         ) : (
                           <p className="mt-3 text-xs text-amber-200/80">Não há dados estruturados para este fator. Se avaliar, registre a fonte nas notas e marque como interpretação quando aplicável.</p>
                         )}
-                        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,240px)_170px_1fr]">
+                        {f.notes.length > 0 && (
+                          <ul className="mt-2 space-y-1 text-[11px] text-sky-200/80">
+                            {f.notes.map((n, i) => (
+                              <li key={i} className="flex gap-1.5">
+                                <Info className="mt-px h-3 w-3 shrink-0" />
+                                {n}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,240px)_190px_1fr]">
                           <select aria-label={`Vantagem em ${f.label}`} value={fa.edge} onChange={(e) => setFactor(f.key, { edge: e.target.value as Edge })} className="field-input">
                             <option value="unknown">Vantagem: sem avaliação</option>
                             <option value="A">Vantagem: {fighterA.name}</option>

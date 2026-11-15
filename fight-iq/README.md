@@ -8,9 +8,11 @@ MVP com **custo R$ 0,00**: roda localmente, sem APIs pagas, sem cartão de créd
 ```bash
 cd fight-iq
 npm install
-npm run dev          # http://localhost:3000
+npm run dev          # http://127.0.0.1:3000 (somente esta máquina)
 # produção local:
 npm run build && npm start
+# acessível na rede local (use com senha — veja Segurança):
+npm run build && npm run start:lan
 ```
 
 Na primeira execução é criado `data/fightiq.local.json` com dados de **DEMONSTRAÇÃO** (fictícios, sempre identificados).
@@ -64,13 +66,17 @@ supabase/migrations/      esquema PostgreSQL (0001_init.sql)
 
 1. Selecione dois atletas (ou carregue uma luta agendada).
 2. *Tale of the tape* e estatísticas espelhadas, com fonte/data em cada métrica.
-3. 16 fatores (últimas 3 lutas, qualidade dos adversários, striking, wrestling, defesa de quedas, grappling, jiu-jitsu, cardio, queixo, potência, tamanho/envergadura, idade, inatividade, lesões, corte de peso, camp). Para cada um: fatos extraídos dos dados ou **"Dados insuficientes"**; você define vantagem, se é fato ou interpretação, e a justificativa.
+3. 16 fatores (últimas 3 lutas, qualidade dos adversários, striking, wrestling, defesa de quedas, grappling, jiu-jitsu, cardio, queixo, potência, tamanho/envergadura, idade, inatividade, lesões, corte de peso, camp). Para cada um: fatos extraídos dos dados ou **"Dados insuficientes"**, e **limitações** (histórico que não cobre o cartel, estatísticas com datas/fontes diferentes, ausência de métrica própria). O indicador numérico só aparece quando todas as métricas do fator apontam para o mesmo atleta. Você define vantagem, se é fato ou interpretação, e a justificativa.
 4. Caminhos para vitória, argumentos e vulnerabilidades **dos dois lados**; quem tem mais caminhos.
-5. Previsão opcional (vencedor, método, round, confiança, odds) com detecção de **armadilha de preço** (probabilidade implícita > sua confiança).
-6. **Questionamentos automáticos por regras** (escolha contra a maioria dos fatores, confiança alta com muitos desconhecidos, análise unilateral etc.).
-7. Análise por IA, se configurada. Tudo é salvo com um retrato dos dados para auditoria.
+5. **Previsão com probabilidades** (opcional): sua estimativa em % para A, B e empate (soma 100); vencedor, método e round; probabilidade da previsão completa (≤ à do vencedor).
+6. **Odds de mercado** (opcional): os dois lados de cada casa. O sistema calcula:
+   - probabilidade implícita (100 ÷ odds), **margem da casa** (soma das implícitas − 100) e probabilidade **sem margem** (método proporcional);
+   - **valor esperado pela sua estimativa** (p × odds − 1) e odds justas (100 ÷ p) — "sem valor esperado" é uma conclusão sobre a sua estimativa, não um alerta de mercado;
+   - **inconsistências de mercado**, independentes da sua opinião: soma abaixo de 100%, margem acima de 10%, divergência entre casas acima de 5 p.p., arbitragem.
+7. **Questionamentos automáticos por regras** (escolha contra a maioria dos fatores, escolher o atleta que a própria estimativa considera menos provável, probabilidade extrema com muitos fatores desconhecidos, análise unilateral etc.).
+8. Análise por IA, se configurada. Tudo é salvo com um retrato dos dados para auditoria.
 
-Previsões vinculadas a uma luta são resolvidas automaticamente quando o resultado é registrado no evento; o Histórico mostra taxa de acerto e **calibração por faixa de confiança**.
+Previsões vinculadas a uma luta são corrigidas automaticamente quando o resultado oficial é registrado: **vencedor, método e round são avaliados separadamente**, e a previsão só conta como acerto se todos os componentes previstos acertarem. Marcações manuais nunca gravam resultado real. O Histórico mostra acerto completo, acerto do vencedor, **Brier score**, **log loss** e calibração (probabilidade atribuída ao escolhido × frequência com que ele venceu).
 
 ## Importação CSV
 
@@ -86,15 +92,31 @@ O arquivo inteiro é validado antes de gravar (tudo ou nada); duplicados são ig
 
 ### Supabase (PostgreSQL gerenciado)
 1. Crie um projeto no plano gratuito (confira os limites atuais em supabase.com/pricing).
-2. SQL Editor → execute `supabase/migrations/0001_init.sql` (RLS ativado, sem políticas públicas).
+2. SQL Editor → execute, em ordem, todos os arquivos de `supabase/migrations/` (`0001` a `0004`). RLS ativado, sem políticas públicas.
 3. `.env.local`: `DATA_BACKEND=supabase`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 4. Reinicie e, se quiser, use "Carregar demonstração" em Configurações.
+
+## Testes
+
+```bash
+npm test             # unitários + ponta a ponta
+npm run test:unit    # Vitest — regras puras (correção de previsões, probabilidades, CSV, comparação, etc.)
+npm run build && npm run test:e2e   # Playwright — sobe o app com um banco temporário em test-results/
+```
+
+Na primeira vez, instale o navegador dos testes: `npx playwright install chromium` (ou defina `PW_CHROMIUM_PATH`).
+
+## Segurança
+
+- O servidor escuta apenas em `127.0.0.1` por padrão. `npm run start:lan` expõe na rede local.
+- Proteção opcional por senha (HTTP Basic Auth) em todas as páginas e ações: defina `APP_BASIC_AUTH_USER` e `APP_BASIC_AUTH_PASSWORD`. Fora da sua máquina, use somente atrás de HTTPS. Não substitui um sistema de login com usuários.
+- Chaves (Supabase, IA) são lidas apenas no servidor; nenhuma variável `NEXT_PUBLIC_`.
 
 ## Limitações conhecidas
 
 - **Armazenamento local** atende um único processo; não use em hospedagem serverless (disco efêmero) — use Supabase.
 - **Adaptador Supabase** foi implementado e tipado, mas não testado contra uma instância real neste ambiente.
-- **Sem autenticação** (MVP de uso pessoal). Antes de expor publicamente com Supabase, adicionar login.
+- **Sem contas de usuário**: há apenas a senha única opcional (Basic Auth). Antes de expor publicamente, adicionar login.
 - Consultas compõem relações em memória — adequado ao volume de um MVP.
 - Não há integração automática com fontes de dados de MMA; a entrada é manual/CSV por escolha (custo zero e procedência controlada).
 - O Next.js 15 inclui internamente uma versão do PostCSS com alertas no `npm audit` que afetam apenas o build; a correção exige migrar para Next 16.

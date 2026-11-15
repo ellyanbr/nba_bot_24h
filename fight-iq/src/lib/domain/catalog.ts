@@ -81,7 +81,7 @@ export const STAT_CATALOG: StatDefinition[] = [
     unit: "/15min",
     higherIsBetter: true,
     description: "Média de tentativas de finalização a cada 15 minutos.",
-    factors: ["grappling", "jiujitsu"],
+    factors: ["jiujitsu"],
   },
 ];
 

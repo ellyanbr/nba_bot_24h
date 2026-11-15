@@ -4,6 +4,13 @@ test("fonte e organização: cadastro, validação e exclusão protegida", async
   const src = `Fonte ${uid()}`;
   await createSource(page, src);
 
+  // SEG2: esquemas perigosos são recusados
+  const srcForm = page.locator("form", { has: page.getByRole("button", { name: "Cadastrar fonte" }) });
+  await srcForm.locator('input[name="name"]').fill("Fonte Maliciosa");
+  await srcForm.locator('input[name="url"]').fill("javascript:alert(document.cookie)");
+  await srcForm.getByRole("button", { name: "Cadastrar fonte" }).click();
+  await expect(page.getByText("Use um endereço começando com http:// ou https://")).toBeVisible();
+
   const org = page.locator("form", { has: page.getByRole("button", { name: "Cadastrar organização" }) });
   await org.locator('input[name="name"]').fill("Liga Teste");
   await org.locator('input[name="slug"]').fill("Inválido!");

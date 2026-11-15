@@ -49,10 +49,17 @@ export async function removeDemoData(): Promise<ActionState> {
   return { ok: true, message: "Dados de demonstração removidos." };
 }
 
+/** Aceita apenas http(s): bloqueia javascript:, data: e outros esquemas em links exibidos. */
+const httpUrl = z
+  .string()
+  .url("URL inválida")
+  .refine((u) => /^https?:\/\//i.test(u), "Use um endereço começando com http:// ou https://")
+  .nullable();
+
 const SourceSchema = z.object({
   name: z.string({ required_error: "Informe o nome", invalid_type_error: "Informe o nome" }).min(2, "Informe o nome"),
   kind: z.enum(["manual", "csv", "api", "official_site", "other"]),
-  url: z.string().url("URL inválida").nullable(),
+  url: httpUrl,
   description: z.string().nullable(),
   retrievedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida").nullable(),
 });
@@ -93,7 +100,7 @@ const OrgSchema = z.object({
   name: z.string({ required_error: "Informe o nome", invalid_type_error: "Informe o nome" }).min(2, "Informe o nome"),
   slug: z.string({ required_error: "Informe o identificador", invalid_type_error: "Informe o identificador" }).regex(/^[a-z0-9-]+$/, "Use letras minúsculas, números e hífen"),
   country: z.string().nullable(),
-  website: z.string().url("URL inválida").nullable(),
+  website: httpUrl,
   sourceId: z.string({ required_error: "Informe a fonte", invalid_type_error: "Informe a fonte" }).min(1, "Informe a fonte"),
 });
 

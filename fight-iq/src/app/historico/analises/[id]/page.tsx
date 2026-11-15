@@ -104,6 +104,13 @@ export default async function AnalysisDetailPage({ params }: { params: Promise<{
                           ))}
                         </ul>
                       )}
+                      {(facts?.notes ?? []).length > 0 && (
+                        <ul className="mt-1 space-y-0.5 text-[11px] text-sky-200/70">
+                          {(facts?.notes ?? []).map((x, i) => (
+                            <li key={i}>ⓘ {x}</li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   );
                 })}

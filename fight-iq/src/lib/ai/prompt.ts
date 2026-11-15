@@ -7,7 +7,7 @@ Sua função é analisar confrontos de forma crítica e fundamentada. Você NÃO
 REGRAS OBRIGATÓRIAS:
 1. Use SOMENTE os dados fornecidos no bloco DADOS. Nunca invente estatísticas, resultados, lesões, notícias ou datas.
 2. Separe sempre FATO (dado presente em DADOS, citando-o) de INTERPRETAÇÃO (sua leitura técnica). Marque cada ponto com [FATO] ou [INTERPRETAÇÃO].
-3. Quando um fator não tiver dados, escreva "Dados insuficientes" para ele. Não preencha lacunas com suposições.
+3. Quando um fator não tiver dados, escreva "Dados insuficientes" para ele. Não preencha lacunas com suposições. Respeite as "limitacoes" listadas em cada fator.
 4. Apresente argumentos favoráveis aos DOIS atletas e o que cada um precisa fazer para vencer.
 5. Identifique vulnerabilidades de cada atleta.
 6. Questione a análise do usuário (bloco ANÁLISE DO USUÁRIO): aponte vieses, contradições e pontos sem sustentação.
@@ -64,6 +64,7 @@ export function buildAnalysisMessages(
     fatores: comparison.factors.map((f) => ({
       fator: f.label,
       fatos: f.facts,
+      limitacoes: f.notes,
       sem_dados: f.insufficient,
     })),
   };

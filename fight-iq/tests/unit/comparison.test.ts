@@ -88,3 +88,66 @@ describe("buildComparison", () => {
     expect(buildComparison(profile("A", { isDemo: true }), profile("B", { isDemo: true })).containsDemo).toBe(true);
   });
 });
+
+describe("revisão dos fatores (A1–A5)", () => {
+  const withHistory = (p: FighterProfile, n: number) => {
+    const entries = Array.from({ length: n }, (_, i) => ({
+      fight: { id: `f${i}` },
+      event: { date: `2026-0${i + 1}-10` },
+      opponent: { name: `Op${i}` },
+      result: { method: "Decisão unânime", round: 3 },
+      outcome: "V",
+    })) as unknown as FighterProfile["completed"];
+    return { ...p, completed: entries, history: entries };
+  };
+
+  it("A1: Grappling não duplica o indicador do Jiu-jitsu e explica a falta de métrica própria", () => {
+    const c = buildComparison(profile("A", {}, { sub_avg: 2, td_avg: 3 }), profile("B", {}, { sub_avg: 0.5, td_avg: 1 }), "2026-11-15");
+    const g = c.factors.find((f) => f.key === "grappling")!;
+    const j = c.factors.find((f) => f.key === "jiujitsu")!;
+    expect(j.numericIndicator).toBe("A");
+    expect(g.numericIndicator).toBe("unknown");
+    expect(g.notes.join(" ")).toContain("Sem métrica própria de grappling");
+    expect(g.facts.every((x) => x.includes("(contexto)"))).toBe(true);
+  });
+
+  it("A2: avisa quando o histórico cadastrado não cobre o cartel", () => {
+    const c = buildComparison(withHistory(profile("A", { wins: 10, losses: 2 }), 1), withHistory(profile("B", { wins: 1, losses: 0 }), 1), "2026-11-15");
+    const notes = c.factors.find((f) => f.key === "ultimas3")!.notes.join(" ");
+    expect(notes).toContain("A: 1 de 12 lutas do cartel");
+    expect(notes).not.toContain("B: 1 de 1");
+    expect(c.factors.find((f) => f.key === "inatividade")!.notes.join(" ")).toContain("não cobre todo o cartel");
+  });
+
+  it("A3: métricas divergentes não geram indicador", () => {
+    // A tem mais SLpM e precisão; B tem melhor defesa e absorve menos.
+    const c = buildComparison(
+      profile("A", {}, { slpm: 6, str_acc: 55, sapm: 5, str_def: 45 }),
+      profile("B", {}, { slpm: 3, str_acc: 40, sapm: 2, str_def: 65 }),
+      "2026-11-15",
+    );
+    const s = c.factors.find((f) => f.key === "striking")!;
+    expect(s.numericIndicator).toBe("unknown");
+    expect(s.notes[0]).toContain("As métricas divergem (2 favorecem A, 2 favorecem B)");
+  });
+
+  it("A3: métricas unânimes geram indicador", () => {
+    const c = buildComparison(profile("A", {}, { td_avg: 4, td_acc: 50 }), profile("B", {}, { td_avg: 1, td_acc: 30 }), "2026-11-15");
+    expect(c.factors.find((f) => f.key === "wrestling")!.numericIndicator).toBe("A");
+  });
+
+  it("A4: avisa quando as estatísticas comparadas têm datas distantes", () => {
+    const a = profile("A", {}, { td_def: 80 });
+    const b = profile("B", {}, { td_def: 60 });
+    b.stats[0].asOf = "2024-01-01";
+    const notes = buildComparison(a, b, "2026-11-15").factors.find((f) => f.key === "defesa_quedas")!.notes.join(" ");
+    expect(notes).toContain("Def. quedas: comparação entre dados de");
+  });
+
+  it("A5: inatividade não gera indicador", () => {
+    const c = buildComparison(withHistory(profile("A", {}), 3), withHistory(profile("B", {}), 1), "2026-11-15");
+    const f = c.factors.find((x) => x.key === "inatividade")!;
+    expect(f.facts.length).toBeGreaterThan(0);
+    expect(f.numericIndicator).toBe("unknown");
+  });
+});
