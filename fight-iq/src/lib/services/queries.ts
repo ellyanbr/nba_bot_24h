@@ -201,12 +201,13 @@ export async function getAnalysis(id: string) {
   const store = getStore();
   const analysis = await store.get("fight_analyses", id);
   if (!analysis) return null;
-  const [a, b, predictions] = await Promise.all([
+  const [a, b, predictions, odds] = await Promise.all([
     store.get("fighters", analysis.fighterAId),
     store.get("fighters", analysis.fighterBId),
     store.list("predictions", { analysisId: id }),
+    store.list("odds_snapshots", { analysisId: id }),
   ]);
-  return { analysis, fighterA: a, fighterB: b, predictions };
+  return { analysis, fighterA: a, fighterB: b, predictions, odds: odds.sort((x, y) => x.capturedAt.localeCompare(y.capturedAt)) };
 }
 
 export interface PredictionRow extends Prediction {
@@ -240,51 +241,8 @@ export async function listPredictions(): Promise<PredictionRow[]> {
     }));
 }
 
-export interface PredictionStats {
-  total: number;
-  pending: number;
-  resolved: number;
-  correct: number;
-  incorrect: number;
-  /** Acerto da previsão completa (vencedor + método/round quando previstos). */
-  accuracy: number | null;
-  /** Acerto apenas do vencedor — somente previsões corrigidas por resultado oficial. */
-  winnerAccuracy: number | null;
-  winnerGraded: number;
-  manualResolved: number;
-  avgConfidence: number | null;
-  /** Calibração por faixa de confiança. */
-  buckets: { label: string; total: number; correct: number; accuracy: number | null }[];
-}
-
-export function computePredictionStats(preds: Prediction[]): PredictionStats {
-  const resolved = preds.filter((p) => p.status === "correct" || p.status === "incorrect");
-  const correct = resolved.filter((p) => p.status === "correct").length;
-  const winnerGraded = preds.filter((p) => p.winnerCorrect != null);
-  const ranges: [string, number, number][] = [
-    ["50–59%", 0, 60],
-    ["60–69%", 60, 70],
-    ["70–79%", 70, 80],
-    ["80–100%", 80, 101],
-  ];
-  return {
-    total: preds.length,
-    pending: preds.filter((p) => p.status === "pending").length,
-    resolved: resolved.length,
-    correct,
-    incorrect: resolved.length - correct,
-    accuracy: resolved.length ? (correct / resolved.length) * 100 : null,
-    winnerAccuracy: winnerGraded.length ? (winnerGraded.filter((p) => p.winnerCorrect).length / winnerGraded.length) * 100 : null,
-    winnerGraded: winnerGraded.length,
-    manualResolved: resolved.filter((p) => p.resolution === "manual").length,
-    avgConfidence: preds.length ? preds.reduce((s, p) => s + p.confidence, 0) / preds.length : null,
-    buckets: ranges.map(([label, lo, hi]) => {
-      const inB = resolved.filter((p) => p.confidence >= lo && p.confidence < hi);
-      const c = inB.filter((p) => p.status === "correct").length;
-      return { label, total: inB.length, correct: c, accuracy: inB.length ? (c / inB.length) * 100 : null };
-    }),
-  };
-}
+export { computePredictionStats, type PredictionStats } from "@/lib/analysis/prediction-stats";
+import { computePredictionStats } from "@/lib/analysis/prediction-stats";
 
 export async function getDashboardData() {
   const [fighters, upcoming, past, analyses, predictions] = await Promise.all([

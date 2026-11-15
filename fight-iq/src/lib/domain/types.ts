@@ -213,7 +213,18 @@ export interface Prediction {
   pickFighterId: ID;
   method: ResultMethod | "Qualquer";
   round: number | null;
-  /** 0–100 */
+  /**
+   * Sua estimativa de probabilidade de vitória (%), somando 100 com o empate.
+   * Nulas em previsões antigas (anteriores ao sistema de probabilidades).
+   */
+  probabilityA: number | null;
+  probabilityB: number | null;
+  probabilityDraw: number | null;
+  /**
+   * Probabilidade (%) da previsão COMPLETA (vencedor + método/round, quando previstos).
+   * Sem método/round, é igual à probabilidade do atleta escolhido.
+   * Em previsões antigas, era um campo de "confiança" de 50–100.
+   */
   confidence: number;
   notes: string | null;
   status: PredictionStatus;
@@ -230,6 +241,26 @@ export interface Prediction {
   actualMethod: string | null;
   actualRound: number | null;
   resolvedAt: string | null;
+  containsDemoData: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Odds de mercado (vitória) registradas numa análise — os DOIS lados, para remover a margem. */
+export interface OddsSnapshot {
+  id: ID;
+  analysisId: ID | null;
+  fightId: ID | null;
+  fighterAId: ID;
+  fighterBId: ID;
+  bookmaker: string;
+  /** Odds decimais. */
+  oddsA: number;
+  oddsB: number;
+  /** Mercado de 3 vias, quando a casa oferece empate. */
+  oddsDraw: number | null;
+  /** Momento em que as odds foram observadas. */
+  capturedAt: string;
   containsDemoData: boolean;
   createdAt: string;
   updatedAt: string;
@@ -260,6 +291,7 @@ export interface TableMap {
   fights: Fight;
   fight_results: FightResult;
   fight_analyses: FightAnalysis;
+  odds_snapshots: OddsSnapshot;
   predictions: Prediction;
   bets: Bet;
 }
@@ -278,6 +310,7 @@ export const TABLES: TableName[] = [
   "fights",
   "fight_results",
   "fight_analyses",
+  "odds_snapshots",
   "predictions",
   "bets",
 ];

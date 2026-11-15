@@ -41,6 +41,7 @@ export async function removeDemoData(): Promise<ActionState> {
     await store.removeWhere("bets", { predictionId: p.id });
     await store.remove("predictions", p.id);
   }
+  await store.removeWhere("odds_snapshots", { containsDemoData: true });
   for (const a of demoAnalyses) await store.remove("fight_analyses", a.id);
   const order: TableName[] = ["fight_results", "fights", "fighter_statistics", "events", "fighters", "organizations", "data_sources"];
   for (const t of order) await store.removeWhere(t, { isDemo: true } as never);

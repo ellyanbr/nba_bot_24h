@@ -57,7 +57,12 @@ describe("SupabaseStore.list (S2: paginação)", () => {
 
 describe("TABLES (S1: ordem compatível com chaves estrangeiras)", () => {
   it("cada tabela aparece depois das tabelas que ela referencia no esquema SQL", () => {
-    const sql = fs.readFileSync(path.join(__dirname, "../../supabase/migrations/0001_init.sql"), "utf8");
+    const dir = path.join(__dirname, "../../supabase/migrations");
+    const sql = fs
+      .readdirSync(dir)
+      .sort()
+      .map((f) => fs.readFileSync(path.join(dir, f), "utf8"))
+      .join("\n");
     const blocks = [...sql.matchAll(/create table if not exists (\w+) \(([\s\S]*?)\n\);/g)];
     expect(blocks.length).toBe(TABLES.length);
     for (const [, table, body] of blocks) {

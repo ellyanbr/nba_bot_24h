@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { Bot, Swords, Trash2 } from "lucide-react";
 import { deleteAnalysis } from "@/app/actions/analyses";
 import { Markdown } from "@/components/analyzer/markdown";
+import { MarketView } from "@/components/analyzer/market-view";
+import { estimateOf } from "@/lib/analysis/prediction-stats";
+import type { Estimate } from "@/lib/analysis/probability";
 import { PRED_STATUS, ResolutionDetail } from "@/components/history/prediction-table";
 import { Badge, Card, CardBody, CardHeader, DemoBadge, LinkButton, Notice, PageHeader } from "@/components/ui";
 import { ActionButton } from "@/components/ui/client";
@@ -14,7 +17,7 @@ export default async function AnalysisDetailPage({ params }: { params: Promise<{
   const { id } = await params;
   const data = await getAnalysis(id);
   if (!data) notFound();
-  const { analysis: a, fighterA, fighterB, predictions } = data;
+  const { analysis: a, fighterA, fighterB, predictions, odds } = data;
   const nameA = fighterA?.name ?? "Atleta A";
   const nameB = fighterB?.name ?? "Atleta B";
   const edgeName = (e: string) => (e === "A" ? nameA : e === "B" ? nameB : e === "even" ? "Equilíbrio" : "Sem avaliação");
@@ -108,6 +111,22 @@ export default async function AnalysisDetailPage({ params }: { params: Promise<{
             </CardBody>
           </Card>
 
+          {(odds.length > 0 || predictions.some((p) => estimateOf(p))) && (
+            <Card>
+              <CardHeader
+                title="Probabilidades e mercado"
+                subtitle={odds.length ? `Odds registradas: ${odds.map((o) => `${o.bookmaker} (${formatDateTime(o.capturedAt)})`).join(" · ")}` : "Nenhuma odd registrada nesta análise"}
+              />
+              <CardBody>
+                <MarketView
+                  markets={odds.map((o) => ({ bookmaker: o.bookmaker, A: o.oddsA, B: o.oddsB, draw: o.oddsDraw }))}
+                  estimate={(predictions.map(estimateOf).find((e) => e != null) as Estimate | undefined) ?? null}
+                  names={{ A: nameA, B: nameB, draw: "Empate" }}
+                />
+              </CardBody>
+            </Card>
+          )}
+
           {a.aiOutput && (
             <Card>
               <CardHeader title="Análise por IA" subtitle={`${a.aiOutput.provider} / ${a.aiOutput.model} · ${formatDateTime(a.aiOutput.generatedAt)}`} icon={<Bot className="h-4 w-4" />} />
@@ -131,7 +150,8 @@ export default async function AnalysisDetailPage({ params }: { params: Promise<{
                     </div>
                     <p className="mt-1 text-xs text-ink-400">
                       {p.method}
-                      {p.round ? ` · R${p.round}` : ""} · confiança {p.confidence}%
+                      {p.round ? ` · R${p.round}` : ""} ·{" "}
+                      {estimateOf(p) ? `${nameA} ${p.probabilityA}% × ${nameB} ${p.probabilityB}%${p.probabilityDraw ? ` · empate ${p.probabilityDraw}%` : ""}` : `confiança ${p.confidence}% (registro antigo)`}
                     </p>
                     <div className="mt-1 text-xs">
                       <ResolutionDetail p={p} nameA={nameA} nameB={nameB} />

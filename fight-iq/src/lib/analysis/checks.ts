@@ -3,14 +3,13 @@
  * Servem para questionar a análise do usuário sem depender de provedores externos.
  */
 import type { Edge, FactorAssessment } from "@/lib/domain/types";
-import { impliedProbability } from "@/lib/utils";
 
 export interface CheckInput {
   factors: FactorAssessment[];
   morePaths: Edge;
   pick: "A" | "B" | null;
-  confidence: number | null;
-  decimalOdds: number | null;
+  /** Sua probabilidade (%) de vitória de cada atleta, quando há previsão. */
+  probabilities: { A: number; B: number } | null;
   pathsA: string;
   pathsB: string;
   argumentsA: string;
@@ -33,8 +32,15 @@ export function runConsistencyChecks(i: CheckInput): CheckMessage[] {
   if (unknown > i.factors.length / 2) {
     out.push({ level: "atencao", text: `${unknown} de ${i.factors.length} fatores estão sem avaliação ou sem dados. Conclusões fortes não são sustentadas.` });
   }
-  if (i.pick && i.confidence != null && i.confidence >= 75 && unknown > i.factors.length / 3) {
-    out.push({ level: "alerta", text: `Confiança de ${i.confidence}% com ${unknown} fatores desconhecidos. Considere reduzir a confiança.` });
+  const pickProb = i.pick && i.probabilities ? i.probabilities[i.pick] : null;
+  if (pickProb != null && pickProb >= 75 && unknown > i.factors.length / 3) {
+    out.push({ level: "alerta", text: `Probabilidade de ${pickProb}% para o escolhido com ${unknown} fatores desconhecidos. Considere uma estimativa menos extrema.` });
+  }
+  if (i.pick && i.probabilities) {
+    const other = i.pick === "A" ? "B" : "A";
+    if (i.probabilities[i.pick] < i.probabilities[other]) {
+      out.push({ level: "alerta", text: `Você escolheu o atleta ao qual atribui MENOS probabilidade de vencer (${i.probabilities[i.pick]}% × ${i.probabilities[other]}%). A previsão deve apontar o mais provável; para avaliar um azarão, use o painel de valor esperado.` });
+    }
   }
   if (i.pick) {
     const pickEdges = i.pick === "A" ? edgesA : edgesB;
@@ -54,21 +60,6 @@ export function runConsistencyChecks(i: CheckInput): CheckMessage[] {
   }
   if (!i.argumentsA.trim() || !i.argumentsB.trim()) {
     out.push({ level: "info", text: "Registre argumentos favoráveis aos dois lados." });
-  }
-  if (i.decimalOdds != null && i.confidence != null) {
-    const ip = impliedProbability(i.decimalOdds);
-    if (ip == null) {
-      out.push({ level: "atencao", text: "Odds decimais devem ser maiores que 1,00." });
-    } else {
-      const diff = i.confidence - ip;
-      if (diff < 0) {
-        out.push({ level: "alerta", text: `Possível armadilha: a probabilidade implícita das odds (${ip.toFixed(1)}%) é maior que sua confiança (${i.confidence}%). Pelo seu próprio julgamento, o preço não compensa.` });
-      } else if (diff > 20) {
-        out.push({ level: "atencao", text: `Sua confiança supera a probabilidade implícita em ${diff.toFixed(1)} p.p. Diferenças grandes costumam indicar informação que o mercado já precificou (lesão, corte de peso, troca de adversário). Verifique.` });
-      } else {
-        out.push({ level: "info", text: `Probabilidade implícita das odds: ${ip.toFixed(1)}% (sem remover a margem da casa). Margem a seu favor: ${diff.toFixed(1)} p.p.` });
-      }
-    }
   }
   return out;
 }

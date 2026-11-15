@@ -121,10 +121,10 @@ export default async function DashboardPage() {
               </div>
               <div className="mt-5 space-y-1.5">
                 <div className="flex justify-between text-xs">
-                  <span className="text-ink-400">Confiança média declarada</span>
-                  <span className="tabular text-ink-200">{s.avgConfidence == null ? "—" : `${s.avgConfidence.toFixed(0)}%`}</span>
+                  <span className="text-ink-400">Prob. média atribuída ao escolhido</span>
+                  <span className="tabular text-ink-200">{s.avgPickProbability == null ? "—" : `${s.avgPickProbability.toFixed(0)}%`}</span>
                 </div>
-                <Meter value={s.avgConfidence} tone="neutral" />
+                <Meter value={s.avgPickProbability} tone="neutral" />
               </div>
               <Link href="/historico" className="mt-4 flex items-center gap-1 text-xs text-blood-300 hover:underline">
                 Ver histórico completo <ArrowRight className="h-3 w-3" />

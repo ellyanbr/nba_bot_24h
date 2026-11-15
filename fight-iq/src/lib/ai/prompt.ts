@@ -13,7 +13,7 @@ REGRAS OBRIGATÓRIAS:
 6. Questione a análise do usuário (bloco ANÁLISE DO USUÁRIO): aponte vieses, contradições e pontos sem sustentação.
 7. Indique quem possui mais caminhos para vencer e justifique. Se os dados não permitirem, diga isso.
 8. Se algum dado for marcado como DEMONSTRAÇÃO, avise que a análise é apenas ilustrativa.
-9. Não incentive apostas. Se houver odds, comente apenas a coerência entre probabilidade implícita e a análise.
+9. Não incentive apostas. Se houver odds e probabilidades, comente apenas a coerência entre a estimativa do usuário, a probabilidade do mercado sem margem e os argumentos — e diferencie "sem valor esperado" de "inconsistência de mercado".
 
 FORMATO DA RESPOSTA (português do Brasil, Markdown):
 ## Resumo
@@ -35,6 +35,10 @@ export interface PromptUserDraft {
   vulnerabilitiesB: string;
   morePaths: string;
   summary: string;
+  /** Probabilidades estimadas pelo usuário (%), quando registradas. */
+  probabilidades?: { A: number; B: number; empate: number } | null;
+  /** Odds de mercado registradas (decimais, dois lados). */
+  odds?: { casa: string; A: number; B: number; empate: number | null }[];
 }
 
 export function buildAnalysisMessages(

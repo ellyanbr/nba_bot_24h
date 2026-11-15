@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Bot, FileText, Target } from "lucide-react";
-import { Meter, RingGauge } from "@/components/charts";
+import { Meter } from "@/components/charts";
 import { PredictionTable } from "@/components/history/prediction-table";
 import { Badge, Card, CardBody, CardHeader, DemoBadge, EmptyState, LinkButton, PageHeader, StatTile } from "@/components/ui";
 import { computePredictionStats, listAnalyses, listPredictions } from "@/lib/services/queries";
@@ -26,25 +26,48 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
       </div>
 
       <Card className="mb-6">
-        <CardHeader title="Calibração" subtitle="Sua taxa de acerto por faixa de confiança. Bem calibrado = acerto próximo da confiança declarada." />
-        <CardBody className="flex flex-col gap-8 md:flex-row md:items-center">
-          <RingGauge value={stats.accuracy} label="acerto" />
-          <div className="grid grid-cols-1 flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <CardHeader
+          title="Calibração"
+          subtitle="Probabilidade que você atribuiu ao escolhido × frequência com que ele venceu. Bem calibrado = as duas próximas."
+        />
+        <CardBody className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <p className="text-[11px] font-semibold tracking-wider text-ink-400 uppercase">Brier score</p>
+              <p className="tabular mt-1 text-2xl font-bold text-white">{stats.brier == null ? "—" : stats.brier.toFixed(3)}</p>
+              <p className="text-xs text-ink-400">0 = perfeito · prever sempre 50/50 = 0,500 · {stats.scored} previsão(ões)</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold tracking-wider text-ink-400 uppercase">Log loss</p>
+              <p className="tabular mt-1 text-2xl font-bold text-white">{stats.logLoss == null ? "—" : stats.logLoss.toFixed(3)}</p>
+              <p className="text-xs text-ink-400">Menor é melhor · 50/50 = 0,693 · pune certezas erradas</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold tracking-wider text-ink-400 uppercase">Prob. média do escolhido</p>
+              <p className="tabular mt-1 text-2xl font-bold text-white">{stats.avgPickProbability == null ? "—" : `${stats.avgPickProbability.toFixed(0)}%`}</p>
+              <p className="text-xs text-ink-400">Compare com o acerto do vencedor</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             {stats.buckets.map((b) => (
               <div key={b.label}>
                 <div className="flex items-baseline justify-between text-xs">
-                  <span className="text-ink-300">Confiança {b.label}</span>
-                  <span className="tabular font-semibold text-white">{b.accuracy == null ? "—" : `${b.accuracy.toFixed(0)}%`}</span>
+                  <span className="text-ink-300">Atribuído {b.label}</span>
+                  <span className="tabular font-semibold text-white">{b.observed == null ? "—" : `${b.observed.toFixed(0)}%`}</span>
                 </div>
                 <div className="mt-1.5">
-                  <Meter value={b.accuracy} />
+                  <Meter value={b.observed} />
                 </div>
                 <p className="mt-1 text-[10px] text-ink-400">
-                  {b.correct}/{b.total} resolvida(s)
+                  {b.total ? `venceu ${b.hits}/${b.total} · média atribuída ${b.expected!.toFixed(0)}%` : "sem previsões resolvidas"}
                 </p>
               </div>
             ))}
           </div>
+          <p className="text-[11px] text-ink-400">
+            Brier e log loss usam apenas previsões com probabilidades registradas e corrigidas por resultado oficial.
+            {stats.legacyCount > 0 && ` ${stats.legacyCount} previsão(ões) antiga(s), sem probabilidades, entram na calibração pelo antigo campo de confiança.`}
+          </p>
         </CardBody>
       </Card>
 
