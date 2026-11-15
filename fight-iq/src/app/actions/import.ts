@@ -190,7 +190,11 @@ async function importCsvImpl(_prev: ImportState, fd: FormData): Promise<ImportSt
         else if (w === norm(blue.name)) winnerId = blue.id;
         else return errors.push(`Linha ${line}: winner deve ser igual a red_fighter ou blue_fighter.`);
       }
-      results.push({ id: newId(), fightId, winnerId, method: r.method as ResultMethod, round: toNum(r.round), time: r.time || null, details: null, ...base });
+      let round = toNum(r.round);
+      if (Number.isNaN(round) || (round != null && (round < 1 || round > rounds))) return errors.push(`Linha ${line}: round inválido (1 a ${rounds}).`);
+      if (round == null && r.method.startsWith("Decisão")) round = rounds;
+      if (round == null && !noWinner) return errors.push(`Linha ${line}: informe o round em que a luta terminou.`);
+      results.push({ id: newId(), fightId, winnerId, method: r.method as ResultMethod, round, time: r.time || null, details: null, ...base });
     }
   });
   if (errors.length) return { ok: false, message: "Nenhum registro importado. Corrija os erros:", errors };

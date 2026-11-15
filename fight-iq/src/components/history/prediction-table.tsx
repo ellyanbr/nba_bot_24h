@@ -3,6 +3,7 @@ import { Check, RotateCcw, Trash2, X } from "lucide-react";
 import { deletePrediction, resolvePrediction } from "@/app/actions/predictions";
 import { Badge, DemoBadge } from "@/components/ui";
 import { ActionButton } from "@/components/ui/client";
+import type { Prediction } from "@/lib/domain/types";
 import type { PredictionRow } from "@/lib/services/queries";
 import { formatDate, impliedProbability } from "@/lib/utils";
 
@@ -12,6 +13,37 @@ export const PRED_STATUS = {
   incorrect: { label: "Errou", tone: "red" },
   void: { label: "Anulada", tone: "neutral" },
 } as const;
+
+function Mark({ label, value }: { label: string; value: boolean | null | undefined }) {
+  if (value == null) return null;
+  return (
+    <span className={value ? "text-emerald-300" : "text-blood-300"}>
+      {label} {value ? "✓" : "✗"}
+    </span>
+  );
+}
+
+/** Resultado real + detalhe da correção. Nunca exibe resultado que não foi registrado oficialmente. */
+export function ResolutionDetail({ p, nameA, nameB }: { p: Prediction; nameA: string; nameB: string }) {
+  if (p.status === "pending") return <span className="text-ink-400">Aguardando resultado</span>;
+  if (p.resolution === "manual") return <span className="text-ink-400">Marcação manual — sem resultado oficial registrado</span>;
+  if (p.status === "void" && !p.actualMethod) return <span className="text-ink-400">Anulada</span>;
+  const winner = p.actualWinnerId === p.fighterAId ? nameA : p.actualWinnerId === p.fighterBId ? nameB : "Sem vencedor";
+  return (
+    <span>
+      <span className="text-ink-200">
+        {winner}
+        {p.actualMethod ? ` · ${p.actualMethod}` : ""}
+        {p.actualRound ? ` · R${p.actualRound}` : ""}
+      </span>
+      <span className="mt-0.5 flex gap-2 text-[11px]">
+        <Mark label="vencedor" value={p.winnerCorrect} />
+        <Mark label="método" value={p.methodCorrect} />
+        <Mark label="round" value={p.roundCorrect} />
+      </span>
+    </span>
+  );
+}
 
 export function PredictionTable({ rows, compact }: { rows: PredictionRow[]; compact?: boolean }) {
   return (
@@ -32,7 +64,6 @@ export function PredictionTable({ rows, compact }: { rows: PredictionRow[]; comp
           {rows.map((p) => {
             const bet = p.bets[0];
             const ip = bet ? impliedProbability(bet.decimalOdds) : null;
-            const actual = p.actualWinnerId ? (p.actualWinnerId === p.fighterAId ? p.fighterA?.name : p.fighterB?.name) : null;
             return (
               <tr key={p.id} className="hover:bg-ink-800/50">
                 <td className="px-4 py-2.5">
@@ -79,7 +110,9 @@ export function PredictionTable({ rows, compact }: { rows: PredictionRow[]; comp
                 <td className="px-3 py-2.5">
                   <Badge tone={PRED_STATUS[p.status].tone}>{PRED_STATUS[p.status].label}</Badge>
                 </td>
-                <td className="px-3 py-2.5 text-ink-300">{actual ? `${actual}${p.actualMethod ? ` · ${p.actualMethod}` : ""}` : p.status === "pending" ? "Aguardando" : "—"}</td>
+                <td className="px-3 py-2.5 text-ink-300">
+                  <ResolutionDetail p={p} nameA={p.fighterA?.name ?? "A"} nameB={p.fighterB?.name ?? "B"} />
+                </td>
                 {!compact && (
                   <td className="px-3 py-2.5">
                     <div className="flex justify-end gap-1">
@@ -92,7 +125,7 @@ export function PredictionTable({ rows, compact }: { rows: PredictionRow[]; comp
                             <X className="h-3.5 w-3.5 text-blood-300" />
                           </ActionButton>
                         </>
-                      ) : (
+                      ) : p.resolution === "auto" ? null : (
                         <ActionButton action={resolvePrediction.bind(null, p.id, "pending")} variant="ghost" title="Voltar para pendente">
                           <RotateCcw className="h-3.5 w-3.5" />
                         </ActionButton>

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Bot, Swords, Trash2 } from "lucide-react";
 import { deleteAnalysis } from "@/app/actions/analyses";
 import { Markdown } from "@/components/analyzer/markdown";
-import { PRED_STATUS } from "@/components/history/prediction-table";
+import { PRED_STATUS, ResolutionDetail } from "@/components/history/prediction-table";
 import { Badge, Card, CardBody, CardHeader, DemoBadge, LinkButton, Notice, PageHeader } from "@/components/ui";
 import { ActionButton } from "@/components/ui/client";
 import type { ComparisonResult } from "@/lib/analysis/comparison";
@@ -133,7 +133,9 @@ export default async function AnalysisDetailPage({ params }: { params: Promise<{
                       {p.method}
                       {p.round ? ` · R${p.round}` : ""} · confiança {p.confidence}%
                     </p>
-                    {p.actualMethod && <p className="mt-1 text-xs text-ink-300">Resultado real: {p.actualWinnerId === a.fighterAId ? nameA : p.actualWinnerId === a.fighterBId ? nameB : "sem vencedor"} · {p.actualMethod}</p>}
+                    <div className="mt-1 text-xs">
+                      <ResolutionDetail p={p} nameA={nameA} nameB={nameB} />
+                    </div>
                   </div>
                 ))
               ) : (

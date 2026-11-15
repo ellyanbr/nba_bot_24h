@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getStore } from "@/lib/data";
 import { RESULT_METHODS, type Fight, type FightEvent, type FightResult, type ResultMethod } from "@/lib/domain/types";
+import { gradePrediction } from "@/lib/analysis/grading";
 import { newId, nowIso } from "@/lib/utils";
 import { bool, keepValues, num, str, zodErrors, type ActionState } from "@/lib/utils/form";
 
@@ -178,6 +179,12 @@ async function saveResultImpl(_prev: ActionState, fd: FormData): Promise<ActionS
   if (d.winnerId && d.winnerId !== fight.redFighterId && d.winnerId !== fight.blueFighterId) {
     return { ok: false, errors: { winnerId: "Vencedor inválido" } };
   }
+  // Round: obrigatório quando há vencedor. Em decisões, a luta termina no último round previsto.
+  if (d.method.startsWith("Decisão") && d.round == null) d.round = fight.scheduledRounds;
+  if (!noWinner && d.round == null) return { ok: false, errors: { round: "Informe o round em que a luta terminou" } };
+  if (d.round != null && d.round > fight.scheduledRounds) {
+    return { ok: false, errors: { round: `A luta tem ${fight.scheduledRounds} rounds` } };
+  }
   const now = nowIso();
   const winnerId = noWinner ? null : d.winnerId;
   const existing = (await store.list("fight_results", { fightId: fight.id }))[0];
@@ -189,14 +196,23 @@ async function saveResultImpl(_prev: ActionState, fd: FormData): Promise<ActionS
   }
   await store.update("fights", fight.id, { status: "completed", updatedAt: now });
 
-  // Resolve automaticamente as previsões vinculadas a esta luta.
+  // Resolve automaticamente as previsões vinculadas a esta luta (vencedor, método e round).
+  // O resultado oficial prevalece sobre qualquer marcação manual anterior.
   const preds = await store.list("predictions", { fightId: fight.id });
   for (const p of preds) {
-    const status = d.method === "Sem resultado" ? "void" : winnerId && p.pickFighterId === winnerId ? "correct" : "incorrect";
-    await store.update("predictions", p.id, { status, actualWinnerId: winnerId, actualMethod: d.method, resolvedAt: now, updatedAt: now });
+    const grade = gradePrediction(p, { winnerId, method: d.method, round: d.round });
+    await store.update("predictions", p.id, {
+      ...grade,
+      resolution: "auto",
+      actualWinnerId: winnerId,
+      actualMethod: d.method,
+      actualRound: d.round,
+      resolvedAt: now,
+      updatedAt: now,
+    });
     const bets = await store.list("bets", { predictionId: p.id });
     for (const b of bets) {
-      await store.update("bets", b.id, { status: status === "correct" ? "won" : status === "void" ? "void" : "lost", updatedAt: now });
+      await store.update("bets", b.id, { status: grade.status === "correct" ? "won" : grade.status === "void" ? "void" : "lost", updatedAt: now });
     }
   }
 

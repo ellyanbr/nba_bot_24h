@@ -4,6 +4,7 @@ import path from "path";
 import { TABLES, type TableName } from "@/lib/domain/types";
 import { matches, type DataStore, type Filter, type Row } from "./store";
 import { buildDemoDataset } from "./demo-seed";
+import { migratePredictionGrading } from "./local-migrations";
 
 type Database = { [K in TableName]: Row<K>[] };
 
@@ -47,6 +48,7 @@ export class LocalJsonStore implements DataStore {
       const db = emptyDb();
       for (const t of TABLES) (db as Record<string, unknown[]>)[t] = parsed[t] ?? [];
       this.cache = db;
+      if (migratePredictionGrading(db)) await this.persist();
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
       const db = emptyDb();

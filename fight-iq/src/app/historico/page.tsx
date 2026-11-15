@@ -21,8 +21,8 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="Análises" value={analyses.length} icon={<FileText className="h-4 w-4" />} />
         <StatTile label="Previsões" value={stats.total} hint={`${stats.pending} pendente(s)`} icon={<Target className="h-4 w-4" />} />
-        <StatTile label="Taxa de acerto" value={stats.accuracy == null ? "—" : `${stats.accuracy.toFixed(0)}%`} hint={`${stats.correct} acerto(s) em ${stats.resolved} resolvida(s)`} accent />
-        <StatTile label="Confiança média" value={stats.avgConfidence == null ? "—" : `${stats.avgConfidence.toFixed(0)}%`} hint="Compare com a taxa de acerto" />
+        <StatTile label="Taxa de acerto" value={stats.accuracy == null ? "—" : `${stats.accuracy.toFixed(0)}%`} hint={`Previsão completa · ${stats.correct}/${stats.resolved}${stats.manualResolved ? ` (${stats.manualResolved} manual)` : ""}`} accent />
+        <StatTile label="Acerto do vencedor" value={stats.winnerAccuracy == null ? "—" : `${stats.winnerAccuracy.toFixed(0)}%`} hint={`${stats.winnerGraded} corrigida(s) por resultado oficial`} />
       </div>
 
       <Card className="mb-6">

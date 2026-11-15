@@ -246,7 +246,12 @@ export interface PredictionStats {
   resolved: number;
   correct: number;
   incorrect: number;
+  /** Acerto da previsão completa (vencedor + método/round quando previstos). */
   accuracy: number | null;
+  /** Acerto apenas do vencedor — somente previsões corrigidas por resultado oficial. */
+  winnerAccuracy: number | null;
+  winnerGraded: number;
+  manualResolved: number;
   avgConfidence: number | null;
   /** Calibração por faixa de confiança. */
   buckets: { label: string; total: number; correct: number; accuracy: number | null }[];
@@ -255,6 +260,7 @@ export interface PredictionStats {
 export function computePredictionStats(preds: Prediction[]): PredictionStats {
   const resolved = preds.filter((p) => p.status === "correct" || p.status === "incorrect");
   const correct = resolved.filter((p) => p.status === "correct").length;
+  const winnerGraded = preds.filter((p) => p.winnerCorrect != null);
   const ranges: [string, number, number][] = [
     ["50–59%", 0, 60],
     ["60–69%", 60, 70],
@@ -268,6 +274,9 @@ export function computePredictionStats(preds: Prediction[]): PredictionStats {
     correct,
     incorrect: resolved.length - correct,
     accuracy: resolved.length ? (correct / resolved.length) * 100 : null,
+    winnerAccuracy: winnerGraded.length ? (winnerGraded.filter((p) => p.winnerCorrect).length / winnerGraded.length) * 100 : null,
+    winnerGraded: winnerGraded.length,
+    manualResolved: resolved.filter((p) => p.resolution === "manual").length,
     avgConfidence: preds.length ? preds.reduce((s, p) => s + p.confidence, 0) / preds.length : null,
     buckets: ranges.map(([label, lo, hi]) => {
       const inB = resolved.filter((p) => p.confidence >= lo && p.confidence < hi);

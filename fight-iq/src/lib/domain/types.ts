@@ -217,8 +217,18 @@ export interface Prediction {
   confidence: number;
   notes: string | null;
   status: PredictionStatus;
+  /**
+   * Como a previsão foi resolvida:
+   * - "auto": a partir do resultado oficial registrado na luta (campos actual* preenchidos);
+   * - "manual": marcação do usuário, SEM resultado oficial registrado (actual* ficam nulos).
+   */
+  resolution: "auto" | "manual" | null;
+  winnerCorrect: boolean | null;
+  methodCorrect: boolean | null;
+  roundCorrect: boolean | null;
   actualWinnerId: ID | null;
   actualMethod: string | null;
+  actualRound: number | null;
   resolvedAt: string | null;
   containsDemoData: boolean;
   createdAt: string;
